@@ -1,0 +1,28 @@
+services:
+  fetchit-combined:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fetchit-combined
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"  # Forward UDP port 5060 for SIP
+      - "8080:8080"      # HTTP for Web Application
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    privileged: true
+    environment:
+      # Listenerd settings
+      - DOTNET_ENVIRONMENT=Production
+      - PacketCaptureSettings__DeviceSelectionMode=Any
+      - PacketCaptureSettings__SipPort=5060
+      - Logging__LogLevel__Fetchit.Listenerd.PacketCaptureService=Debug
+      # WebPage settings
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/mqttconfig.db
+    volumes:
+      - ./data:/app/data  # Persist SQLite database
+      - ./Fetchit.Listenerd/appsettings.Production.json:/app/listenerd/appsettings.Production.json:ro
+      - ./Fetchit.WebPage/appsettings.Production.json:/app/webpage/appsettings.Production.json:ro
