@@ -1,48 +1,115 @@
 #!/bin/bash
+set -e
 
 echo "=========================================="
-echo "  Fetchit MQTT Configuration Manager"
-echo "=========================================="
-echo ""
-
-# Check if docker and docker-compose are installed
-if ! command -v docker &> /dev/null; then
-    echo "Error: Docker is not installed."
-    exit 1
-fi
-
-if ! command -v docker-compose &> /dev/null; then
-    echo "Error: Docker Compose is not installed."
-    exit 1
-fi
-
-# Create data directory if it doesn't exist
-if [ ! -d "./data" ]; then
-    echo "Creating data directory..."
-    mkdir -p ./data
-fi
-
-echo "Building and starting services..."
-docker-compose up -d --build
-
-echo ""
-echo "=========================================="
-echo "Services started successfully!"
+echo "  Fetchit Listenerd Service"
 echo "=========================================="
 echo ""
-echo "Container: fetchit-combined (Running both services)"
-echo "  - Web Application: http://localhost:8080"
-echo "  - Listenerd Service: Running in background"
+
+#--------------------------------------------
+# Variables
+#--------------------------------------------
+DOTNET_VERSION="9.0"
+DOTNET_INSTALL_DIR="/usr/share/dotnet"
+APP_ROOT="/app"
+SUPERVISOR_CONF="/etc/supervisor/conf.d/fetchit.conf"
+
+#--------------------------------------------
+# Ensure script is run as root
+#--------------------------------------------
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Please run this script as root (use sudo)"
+  exit 1
+fi
+
+echo "Installing system dependencies..."
+apt-get update
+apt-get install -y \
+  wget \
+  curl \
+  libpcap0.8 \
+  supervisor
+
+if ! command -v dotnet &> /dev/null; then
+    echo "Installing .NET SDK ${DOTNET_VERSION} (LTS)..."
+    wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
+    chmod +x /tmp/dotnet-install.sh
+    /tmp/dotnet-install.sh \
+        --channel ${DOTNET_VERSION} \
+        --install-dir ${DOTNET_INSTALL_DIR}
+    ln -sf ${DOTNET_INSTALL_DIR}/dotnet /usr/bin/dotnet
+fi
+
+dotnet --version
+echo ""
+
+echo "Restoring .NET projects..."
+dotnet restore "Fetchit.Listenerd/Fetchit.Listenerd.csproj"
+dotnet restore "Fetchit.WebPage/Fetchit.WebPage.csproj"
+
+echo "Building projects..."
+dotnet build "Fetchit.Listenerd/Fetchit.Listenerd.csproj" -c Release
+dotnet build "Fetchit.WebPage/Fetchit.WebPage.csproj" -c Release
+
+echo "Publishing projects..."
+mkdir -p ${APP_ROOT}/publish
+
+dotnet publish "Fetchit.Listenerd/Fetchit.Listenerd.csproj" \
+  -c Release \
+  -o ${APP_ROOT}/publish/listenerd \
+  /p:UseAppHost=false
+
+dotnet publish "Fetchit.WebPage/Fetchit.WebPage.csproj" \
+  -c Release \
+  -o ${APP_ROOT}/publish/webpage \
+  /p:UseAppHost=false
+
+mkdir -p ${APP_ROOT}/data
+
+echo "Creating Supervisor configuration..."
+
+cat > ${SUPERVISOR_CONF} <<EOF
+[program:fetchit-listenerd]
+command=/usr/bin/dotnet ${APP_ROOT}/publish/listenerd/Fetchit.Listenerd.dll
+directory=${APP_ROOT}/publish/listenerd
+autostart=true
+autorestart=true
+startretries=3
+stderr_logfile=/var/log/supervisor/listenerd.err.log
+stdout_logfile=/var/log/supervisor/listenerd.out.log
+priority=1
+
+[program:fetchit-webpage]
+command=/usr/bin/dotnet ${APP_ROOT}/publish/webpage/Fetchit.WebPage.dll
+directory=${APP_ROOT}/publish/webpage
+autostart=true
+autorestart=true
+startretries=3
+environment=ASPNETCORE_URLS="http://0.0.0.0:8080",ASPNETCORE_ENVIRONMENT="Production"
+stderr_logfile=/var/log/supervisor/webpage.err.log
+stdout_logfile=/var/log/supervisor/webpage.out.log
+priority=2
+EOF
+
+echo "Starting Supervisor..."
+systemctl enable supervisor
+systemctl restart supervisor
+
+sleep 2
+supervisorctl reread
+supervisorctl update
+
+echo ""
+echo "=========================================="
+echo "✅ Services started successfully!"
+echo ""
+echo "Web Application : http://localhost:8080"
+echo "Listener Service: Running in background"
 echo ""
 echo "Useful commands:"
-echo "  View logs:              docker-compose logs -f"
-echo "  Check process status:   docker exec fetchit-combined supervisorctl status"
-echo "  Stop services:          docker-compose down"
-echo "  Restart services:       docker-compose restart"
+echo "  Check status : sudo supervisorctl status"
+echo "  View logs   : sudo tail -f /var/log/supervisor/*.log"
 echo ""
-echo "View individual service logs:"
-echo "  Listenerd:  docker exec fetchit-combined tail -f /var/log/supervisor/listenerd.out.log"
-echo "  WebPage:    docker exec fetchit-combined tail -f /var/log/supervisor/webpage.out.log"
-echo ""
-echo "Database location: ./data/mqttconfig.db"
+echo "Database location:"
+echo "  ${APP_ROOT}/data/mqttconfig.db"
 echo "=========================================="
