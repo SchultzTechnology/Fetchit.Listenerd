@@ -13,6 +13,7 @@ DOTNET_VERSION="9.0"
 DOTNET_INSTALL_DIR="/usr/share/dotnet"
 APP_ROOT="/app"
 SUPERVISOR_CONF="/etc/supervisor/conf.d/fetchit.conf"
+PUBLISH_PATH=${APP_ROOT}/fetchit
 
 #--------------------------------------------
 # Ensure script is run as root
@@ -52,16 +53,16 @@ dotnet build "Fetchit.Listenerd/Fetchit.Listenerd.csproj" -c Release
 dotnet build "Fetchit.WebPage/Fetchit.WebPage.csproj" -c Release
 
 echo "Publishing projects..."
-mkdir -p ${APP_ROOT}/publish
+mkdir -p ${PUBLISH_PATH}
 
 dotnet publish "Fetchit.Listenerd/Fetchit.Listenerd.csproj" \
   -c Release \
-  -o ${APP_ROOT}/publish/listenerd \
+  -o ${PUBLISH_PATH}/listenerd \
   /p:UseAppHost=false
 
 dotnet publish "Fetchit.WebPage/Fetchit.WebPage.csproj" \
   -c Release \
-  -o ${APP_ROOT}/publish/webpage \
+  -o ${PUBLISH_PATH}/webpage \
   /p:UseAppHost=false
 
 mkdir -p ${APP_ROOT}/data

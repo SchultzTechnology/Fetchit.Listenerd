@@ -16,14 +16,14 @@ public class SupervisorService
         try
         {
             // Check if running in Docker (supervisor is available)
-            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" 
-                          || File.Exists("/.dockerenv");
+            //var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" 
+            //              || File.Exists("/.dockerenv");
 
-            if (!isDocker)
-            {
-                _logger.LogWarning("Not running in Docker container, skipping supervisor restart");
-                return false;
-            }
+            //if (!isDocker)
+            //{
+            //    _logger.LogWarning("Not running in Docker container, skipping supervisor restart");
+            //    return false;
+            //}
 
             // Use supervisorctl to restart the listenerd service
             var processInfo = new ProcessStartInfo
