@@ -71,8 +71,8 @@ echo "Creating Supervisor configuration..."
 
 cat > ${SUPERVISOR_CONF} <<EOF
 [program:fetchit-listenerd]
-command=/usr/bin/dotnet ${APP_ROOT}/publish/listenerd/Fetchit.Listenerd.dll
-directory=${APP_ROOT}/publish/listenerd
+command=/usr/bin/dotnet ${PUBLISH_PATH}/listenerd/Fetchit.Listenerd.dll
+directory=${PUBLISH_PATH}/listenerd
 autostart=true
 autorestart=true
 startretries=3
@@ -81,8 +81,8 @@ stdout_logfile=/var/log/supervisor/listenerd.out.log
 priority=1
 
 [program:fetchit-webpage]
-command=/usr/bin/dotnet ${APP_ROOT}/publish/webpage/Fetchit.WebPage.dll
-directory=${APP_ROOT}/publish/webpage
+command=/usr/bin/dotnet ${PUBLISH_PATH}/webpage/Fetchit.WebPage.dll
+directory=${PUBLISH_PATH}/webpage
 autostart=true
 autorestart=true
 startretries=3
