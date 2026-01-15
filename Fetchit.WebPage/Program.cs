@@ -34,15 +34,26 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<MqttConfigContext>();
-    dbContext.Database.EnsureCreated();
-    if (!dbContext.Users.Any())
+    
+    try
     {
+        // Ensure database is deleted and recreated to apply current schema
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.EnsureCreated();
+        
+        // Add default admin user
         dbContext.Users.Add(new User
         {
             Username = "admin",
             PasswordHash = HashPassword("Welcome123!")
         });
         dbContext.SaveChanges();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while initializing the database.");
+        throw;
     }
 }
 
