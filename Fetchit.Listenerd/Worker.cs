@@ -23,14 +23,20 @@ public class Worker : BackgroundService
 
         await _mqtt.InitializeAsync();
         _captureService.Start(_mqtt);
+        
+        _logger.LogInformation("Worker started successfully");
+        
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Heartbeat every 5 minutes instead of every second
             if (_logger.IsEnabled(LogLevel.Information))
             {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                _logger.LogInformation("Worker heartbeat at: {time}", DateTimeOffset.Now);
             }
-            await Task.Delay(1000, stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         }
+        
+        _logger.LogInformation("Worker stopping");
         _captureService.Stop();
     }
 

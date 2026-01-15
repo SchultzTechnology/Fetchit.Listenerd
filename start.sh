@@ -77,7 +77,11 @@ autostart=true
 autorestart=true
 startretries=3
 stderr_logfile=/var/log/supervisor/listenerd.err.log
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=3
 stdout_logfile=/var/log/supervisor/listenerd.out.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=3
 priority=1
 
 [program:fetchit-webpage]
@@ -88,7 +92,11 @@ autorestart=true
 startretries=3
 environment=ASPNETCORE_URLS="http://0.0.0.0:8080",ASPNETCORE_ENVIRONMENT="Production"
 stderr_logfile=/var/log/supervisor/webpage.err.log
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=3
 stdout_logfile=/var/log/supervisor/webpage.out.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=3
 priority=2
 EOF
 
