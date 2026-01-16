@@ -29,7 +29,8 @@ apt-get install -y \
   wget \
   curl \
   libpcap0.8 \
-  supervisor
+  supervisor \
+  iptables-persistent
 
 if ! command -v dotnet &> /dev/null; then
     echo "Installing .NET SDK ${DOTNET_VERSION} (LTS)..."
@@ -66,6 +67,10 @@ dotnet publish "Fetchit.WebPage/Fetchit.WebPage.csproj" \
   /p:UseAppHost=false
 
 mkdir -p ${APP_ROOT}/data
+
+echo "Configuring firewall..."
+iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+netfilter-persistent save
 
 echo "Creating Supervisor configuration..."
 
