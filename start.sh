@@ -47,12 +47,48 @@ fi
 
 if [ "$DOTNET_WORKS" = false ]; then
     echo "Installing .NET SDK ${DOTNET_VERSION} (LTS)..."
-    wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
-    chmod +x /tmp/dotnet-install.sh
-    /tmp/dotnet-install.sh \
+    
+    # Completely clean up any previous installation attempts
+    echo "Cleaning up old installation files..."
+    rm -rf /var/tmp/dotnet-* /tmp/dotnet-* 2>/dev/null || true
+    rm -rf ${DOTNET_INSTALL_DIR} 2>/dev/null || true
+    rm -rf /root/.dotnet 2>/dev/null || true
+    
+    # Install to root home directory first (more reliable)
+    TEMP_INSTALL_DIR="/root/.dotnet"
+    mkdir -p ${TEMP_INSTALL_DIR}
+    
+    # Use /var/tmp which has more space
+    export TMPDIR=/var/tmp
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+    
+    # Download installer
+    echo "Downloading .NET installer..."
+    wget -q --show-progress https://dot.net/v1/dotnet-install.sh -O /var/tmp/dotnet-install.sh
+    chmod +x /var/tmp/dotnet-install.sh
+    
+    # Run installation to temp location
+    echo "Installing .NET SDK (this may take a few minutes)..."
+    /var/tmp/dotnet-install.sh \
         --channel ${DOTNET_VERSION} \
-        --install-dir ${DOTNET_INSTALL_DIR}
+        --install-dir ${TEMP_INSTALL_DIR} \
+        --no-path \
+        --verbose || {
+            echo "❌ Installation failed. Checking available space..."
+            df -h /var/tmp /root
+            exit 1
+        }
+    
+    # Move to final location
+    echo "Moving to system location..."
+    mkdir -p $(dirname ${DOTNET_INSTALL_DIR})
+    mv ${TEMP_INSTALL_DIR} ${DOTNET_INSTALL_DIR}
+    
     ln -sf ${DOTNET_INSTALL_DIR}/dotnet /usr/bin/dotnet
+    
+    # Clean up installation files
+    echo "Cleaning up temporary files..."
+    rm -rf /var/tmp/dotnet-*
     
     # Verify installation
     if ! dotnet --version &> /dev/null; then
