@@ -32,7 +32,20 @@ apt-get install -y \
   supervisor \
   iptables-persistent
 
-if ! command -v dotnet &> /dev/null; then
+# Check if dotnet exists and is working properly
+DOTNET_WORKS=false
+if command -v dotnet &> /dev/null; then
+    if dotnet --version &> /dev/null; then
+        DOTNET_WORKS=true
+        echo ".NET SDK is already installed and working."
+    else
+        echo "⚠️ .NET installation is corrupted. Reinstalling..."
+        rm -rf ${DOTNET_INSTALL_DIR}
+        rm -f /usr/bin/dotnet
+    fi
+fi
+
+if [ "$DOTNET_WORKS" = false ]; then
     echo "Installing .NET SDK ${DOTNET_VERSION} (LTS)..."
     wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
     chmod +x /tmp/dotnet-install.sh
@@ -40,6 +53,12 @@ if ! command -v dotnet &> /dev/null; then
         --channel ${DOTNET_VERSION} \
         --install-dir ${DOTNET_INSTALL_DIR}
     ln -sf ${DOTNET_INSTALL_DIR}/dotnet /usr/bin/dotnet
+    
+    # Verify installation
+    if ! dotnet --version &> /dev/null; then
+        echo "❌ .NET installation failed!"
+        exit 1
+    fi
 fi
 
 dotnet --version
