@@ -42,8 +42,8 @@ RUN apt-get update && apt-get install -y \
 COPY --from=publish /app/publish/listenerd ./listenerd
 COPY --from=publish /app/publish/webpage ./webpage
 
-# Create directory for SQLite database
-RUN mkdir -p /app/data
+# Create directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Create supervisor configuration with Unix socket
 RUN mkdir -p /var/log/supervisor /var/run

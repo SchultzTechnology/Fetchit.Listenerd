@@ -34,26 +34,44 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<MqttConfigContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
-    try
+    var maxRetries = 5;
+    var retryDelay = TimeSpan.FromSeconds(2);
+    
+    for (int retry = 0; retry < maxRetries; retry++)
     {
-        // Ensure database is deleted and recreated to apply current schema
-        dbContext.Database.EnsureDeleted();
-        dbContext.Database.EnsureCreated();
-        
-        // Add default admin user
-        dbContext.Users.Add(new User
+        try
         {
-            Username = "admin",
-            PasswordHash = HashPassword("Welcome123!")
-        });
-        dbContext.SaveChanges();
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing the database.");
-        throw;
+            // Ensure database exists and apply any pending migrations
+            dbContext.Database.EnsureCreated();
+            
+            // Add default admin user only if no users exist
+            if (!dbContext.Users.Any())
+            {
+                logger.LogInformation("No users found. Creating default admin user.");
+                dbContext.Users.Add(new User
+                {
+                    Username = "admin",
+                    PasswordHash = HashPassword("Welcome123!")
+                });
+                dbContext.SaveChanges();
+                logger.LogInformation("Default admin user created successfully.");
+            }
+            
+            logger.LogInformation("Database initialized successfully.");
+            break;
+        }
+        catch (Exception ex) when (retry < maxRetries - 1)
+        {
+            logger.LogWarning(ex, "Database initialization attempt {Retry} failed. Retrying in {Delay} seconds...", retry + 1, retryDelay.TotalSeconds);
+            Thread.Sleep(retryDelay);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while initializing the database after {MaxRetries} attempts.", maxRetries);
+            throw;
+        }
     }
 }
 
