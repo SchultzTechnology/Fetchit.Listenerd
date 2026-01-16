@@ -120,9 +120,13 @@ namespace Fetchit.Listenerd
             _totalPacketsReceived++;
             _lastPacketTime = DateTime.Now;
             
+            _logger.LogInformation("🔵 Packet received! Total: {Total}", _totalPacketsReceived);
+            
             try
             {
                 var raw = e.GetPacket();
+                _logger.LogInformation("Raw packet length: {Length}", raw.Data.Length);
+                
                 var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
 
                 var ip = packet.Extract<IPv4Packet>();
@@ -130,7 +134,7 @@ namespace Fetchit.Listenerd
 
                 if (ip == null || udp == null)
                 {
-                    _logger.LogDebug("Packet received but not IPv4/UDP");
+                    _logger.LogWarning("Packet received but not IPv4/UDP - LinkLayer: {LinkLayer}", raw.LinkLayerType);
                     return;
                 }
 
