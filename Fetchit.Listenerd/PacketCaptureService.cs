@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PacketDotNet;
 using SharpPcap;
+using SharpPcap.LibPcap;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -109,10 +110,21 @@ namespace Fetchit.Listenerd
         private void ConfigureDevice()
         {
             _device!.OnPacketArrival += OnPacketArrival;
-            _device.Open();
-            _device.Filter = $"udp port {_settings.SipPort}";
-            _logger.LogInformation("✓ Device configured with filter: udp port {Port}", _settings.SipPort);
-            //_logger.LogInformation("🎧 Now listening for SIP traffic...");
+            
+            try
+            {
+                // Open in promiscuous mode
+                _device.Open(DeviceModes.Promiscuous, 1000);
+                _logger.LogInformation("✓ Device opened in promiscuous mode");
+                
+                _device.Filter = $"udp port {_settings.SipPort}";
+                _logger.LogInformation("✓ Device configured with filter: udp port {Port}", _settings.SipPort);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to configure device");
+                throw;
+            }
         }
 
         private void OnPacketArrival(object sender, PacketCapture e)
