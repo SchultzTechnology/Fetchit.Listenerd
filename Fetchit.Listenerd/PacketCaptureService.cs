@@ -69,13 +69,13 @@ namespace Fetchit.Listenerd
                 throw new Exception("No network devices found.");
 
             // Log available devices
-            //_logger.LogInformation("Available network devices ({Count}):", devices.Count);
-            //for (int i = 0; i < devices.Count; i++)
-            //{
-            //    var device = devices[i];
-            //    _logger.LogInformation("  [{Index}] {Name}", i, device.Name);
-            //    _logger.LogInformation("      Description: {Description}", device.Description);
-            //}
+            _logger.LogInformation("Available network devices ({Count}):", devices.Count);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                _logger.LogInformation("  [{Index}] {Name}", i, device.Name);
+                _logger.LogInformation("      Description: {Description}", device.Description);
+            }
         
             _device = _settings.DeviceSelectionMode.ToLower() switch
             {
@@ -93,7 +93,9 @@ namespace Fetchit.Listenerd
                     ?? devices.FirstOrDefault()
                     ?? devices[0],
                 "any" => devices.FirstOrDefault(d => 
-                    d.Name.Equals("any", StringComparison.OrdinalIgnoreCase)),
+                    d.Name.Equals("any", StringComparison.OrdinalIgnoreCase))
+                    ?? devices.FirstOrDefault()
+                    ?? devices[0],
                 _ => devices[0]
             };
 
