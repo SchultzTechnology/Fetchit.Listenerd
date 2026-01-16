@@ -53,6 +53,7 @@ if [ "$DOTNET_WORKS" = false ]; then
     rm -rf /var/tmp/dotnet-* /tmp/dotnet-* 2>/dev/null || true
     rm -rf ${DOTNET_INSTALL_DIR} 2>/dev/null || true
     rm -rf /root/.dotnet 2>/dev/null || true
+    rm -f /usr/bin/dotnet 2>/dev/null || true
     
     # Install to root home directory first (more reliable)
     TEMP_INSTALL_DIR="/root/.dotnet"
@@ -67,12 +68,13 @@ if [ "$DOTNET_WORKS" = false ]; then
     wget -q --show-progress https://dot.net/v1/dotnet-install.sh -O /var/tmp/dotnet-install.sh
     chmod +x /var/tmp/dotnet-install.sh
     
-    # Run installation to temp location
+    # Run installation to temp location with --force to overwrite any partial installations
     echo "Installing .NET SDK (this may take a few minutes)..."
     /var/tmp/dotnet-install.sh \
         --channel ${DOTNET_VERSION} \
         --install-dir ${TEMP_INSTALL_DIR} \
         --no-path \
+        --skip-non-versioned-files \
         --verbose || {
             echo "❌ Installation failed. Checking available space..."
             df -h /var/tmp /root
@@ -84,17 +86,22 @@ if [ "$DOTNET_WORKS" = false ]; then
     mkdir -p $(dirname ${DOTNET_INSTALL_DIR})
     mv ${TEMP_INSTALL_DIR} ${DOTNET_INSTALL_DIR}
     
+    # Create symlink
     ln -sf ${DOTNET_INSTALL_DIR}/dotnet /usr/bin/dotnet
     
     # Clean up installation files
     echo "Cleaning up temporary files..."
-    rm -rf /var/tmp/dotnet-*
-    
-    # Verify installation
-    if ! dotnet --version &> /dev/null; then
-        echo "❌ .NET installation failed!"
-        exit 1
-    fi
+    rm -rf /var/tmp/dotnet-* /tmp/dotnet-*
+fi
+
+# Final verification
+echo "Verifying .NET installation..."
+if ! dotnet --version &> /dev/null; then
+    echo "❌ .NET installation failed or is corrupted!"
+    echo "Attempting to diagnose..."
+    ls -la ${DOTNET_INSTALL_DIR} 2>&1 || echo "Install directory does not exist"
+    ls -la /usr/bin/dotnet 2>&1 || echo "Symlink does not exist"
+    exit 1
 fi
 
 dotnet --version
