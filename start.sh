@@ -28,7 +28,7 @@ apt-get update
 apt-get install -y \
   wget \
   curl \
-  libpcap0.8 \
+  libpcap0.8t64 \
   supervisor \
   iptables-persistent
 
