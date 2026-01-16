@@ -132,12 +132,16 @@ namespace Fetchit.Listenerd
             _totalPacketsReceived++;
             _lastPacketTime = DateTime.Now;
             
-            _logger.LogInformation("🔵 Packet received! Total: {Total}", _totalPacketsReceived);
-            
             try
             {
                 var raw = e.GetPacket();
-                _logger.LogInformation("Raw packet length: {Length}", raw.Data.Length);
+                
+                // Skip abnormally large packets to prevent crashes
+                if (raw.Data.Length > 65535)
+                {
+                    _logger.LogWarning("Skipping abnormally large packet: {Length} bytes", raw.Data.Length);
+                    return;
+                }
                 
                 var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
 
@@ -150,22 +154,15 @@ namespace Fetchit.Listenerd
                     return;
                 }
 
-                _logger.LogDebug("UDP packet: {SourceIp}:{SourcePort} -> {DestIp}:{DestPort}",
-                    ip.SourceAddress, udp.SourcePort, ip.DestinationAddress, udp.DestinationPort);
-
                 // Only SIP packets
                 if (udp.SourcePort != _settings.SipPort && udp.DestinationPort != _settings.SipPort)
                 {
-                    _logger.LogDebug("UDP packet but not on SIP port");
                     return;
                 }
 
                 var payload = udp.PayloadData;
-                if (payload == null)
-                {
-                    _logger.LogDebug("SIP packet with no payload");
+                if (payload == null || payload.Length == 0)
                     return;
-                }
                 
                 string sourceIp = ip.SourceAddress.ToString();
                 string destinationIp = ip.DestinationAddress.ToString();
@@ -174,9 +171,6 @@ namespace Fetchit.Listenerd
                 _sipPacketsProcessed++;
                 _logger.LogInformation("📞 SIP Packet #{Count}: {SourceIp} -> {DestIp}", 
                     _sipPacketsProcessed, sourceIp, destinationIp);
-
-                _logger.LogDebug("SIP Content: {Content}", 
-                    sipText.Length > 200 ? sipText.Substring(0, 200) + "..." : sipText);
 
                 _mqtt.PublishSipAsync(sourceIp, destinationIp, sipText);
             }
