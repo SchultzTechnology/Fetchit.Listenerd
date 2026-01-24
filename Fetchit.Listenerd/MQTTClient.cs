@@ -218,6 +218,8 @@ public class MQTTClient
                         PhoneSystem = "R-Pi"
                     });
 
+                    _logger.LogInformation("Payload: {Payload}", payload);
+
                     var message = new MqttApplicationMessageBuilder().WithTopic(_topicPublish)
                         .WithPayload(payload)
                         .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
