@@ -287,6 +287,5 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
-/data/mqttconfig.db
-/data/mqttconfig.db-shm
-/data/mqttconfig.db-wal
+
+*.db*
