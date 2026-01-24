@@ -23,7 +23,7 @@ public class MqttConfigService
         {
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<MqttConfigContext>();
-            
+
             return await context.MqttConfigurations
                 .OrderByDescending(c => c.UpdatedAt)
                 .FirstOrDefaultAsync();

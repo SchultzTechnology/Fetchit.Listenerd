@@ -71,7 +71,7 @@ namespace Fetchit.WebPage.Controllers
             using var sha = SHA256.Create();
             return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(password)));
         }
-    
+
 
         [HttpPost]
         public async Task<IActionResult> ChangePassword(string currentPassword, string newPassword, string confirmPassword)

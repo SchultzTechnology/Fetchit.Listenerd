@@ -35,17 +35,17 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<MqttConfigContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
+
     var maxRetries = 5;
     var retryDelay = TimeSpan.FromSeconds(2);
-    
+
     for (int retry = 0; retry < maxRetries; retry++)
     {
         try
         {
             // Ensure database exists and apply any pending migrations
             dbContext.Database.EnsureCreated();
-            
+
             // Add default admin user only if no users exist
             if (!dbContext.Users.Any())
             {
@@ -58,7 +58,7 @@ using (var scope = app.Services.CreateScope())
                 dbContext.SaveChanges();
                 logger.LogInformation("Default admin user created successfully.");
             }
-            
+
             logger.LogInformation("Database initialized successfully.");
             break;
         }

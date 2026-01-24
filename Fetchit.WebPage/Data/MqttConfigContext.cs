@@ -6,7 +6,7 @@ namespace Fetchit.WebPage.Data;
 public class MqttConfigContext : DbContext
 {
     public DbSet<MqttConfiguration> MqttConfigurations { get; set; }
-   public DbSet<User> Users { get; set; }
+    public DbSet<User> Users { get; set; }
     public MqttConfigContext(DbContextOptions<MqttConfigContext> options)
         : base(options)
     {

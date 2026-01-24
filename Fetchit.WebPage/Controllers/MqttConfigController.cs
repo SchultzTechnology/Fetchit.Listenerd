@@ -29,7 +29,7 @@ public class MqttConfigController : Controller
     public async Task<IActionResult> Index()
     {
         var configuration = await _configService.GetLatestConfigurationAsync();
-        
+
         MqttSettingsViewModel model;
         if (configuration != null)
         {
@@ -44,7 +44,7 @@ public class MqttConfigController : Controller
             ViewData["CreatedAt"] = configuration.CreatedAt;
             ViewData["UpdatedAt"] = configuration.UpdatedAt;
             ViewData["IsEdit"] = true;
-            
+
             // Try to decode the connection secret for display
             var decoded = _connectionSecretService.DecodeConnectionSecret(configuration.ConnectionSecret);
             if (decoded != null)
@@ -65,7 +65,7 @@ public class MqttConfigController : Controller
             };
             ViewData["IsEdit"] = false;
         }
-        
+
         return View(model);
     }
 
@@ -94,7 +94,7 @@ public class MqttConfigController : Controller
         try
         {
             var existingConfig = await _configService.GetLatestConfigurationAsync();
-            
+
             if (existingConfig != null)
             {
                 await _configService.UpdateConfigurationAsync(existingConfig.Id, model);
@@ -105,10 +105,10 @@ public class MqttConfigController : Controller
                 await _configService.SaveConfigurationAsync(model);
                 _logger.LogInformation("MQTT configuration created, restarting Listenerd service");
             }
-            
+
             // Restart the Listenerd service to pick up new configuration
             var restarted = await _supervisorService.RestartListenerdAsync();
-            
+
             if (restarted)
             {
                 TempData["SuccessMessage"] = "MQTT configuration saved and Listenerd service restarted successfully!";
@@ -119,14 +119,14 @@ public class MqttConfigController : Controller
                 TempData["SuccessMessage"] = "MQTT configuration saved successfully! (Service restart not available - may require manual restart)";
                 _logger.LogWarning("Failed to restart Listenerd service automatically");
             }
-            
+
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving MQTT configuration");
             ModelState.AddModelError("", "An error occurred while saving the configuration.");
-            
+
             var config = await _configService.GetLatestConfigurationAsync();
             if (config != null)
             {
@@ -139,7 +139,7 @@ public class MqttConfigController : Controller
             {
                 ViewData["IsEdit"] = false;
             }
-            
+
             return View("Index", model);
         }
     }
@@ -158,10 +158,10 @@ public class MqttConfigController : Controller
                 if (result)
                 {
                     _logger.LogInformation("MQTT configuration deleted, restarting Listenerd service");
-                    
+
                     // Restart the service after deletion
                     await _supervisorService.RestartListenerdAsync();
-                    
+
                     TempData["SuccessMessage"] = "MQTT configuration deleted and service restarted successfully!";
                 }
                 else

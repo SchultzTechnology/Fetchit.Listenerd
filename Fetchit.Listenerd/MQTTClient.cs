@@ -30,14 +30,12 @@ public class MQTTClient
         {
             _logger = logger;
             _configService = configService;
-            //_ongoingCalls = new List<string>();
         }
 
         public async Task InitializeAsync()
         {
             try
             {
-                // Get configuration from database
                 var config = await _configService.GetLatestConfigurationAsync();
                 if (config == null)
                 {
@@ -45,7 +43,6 @@ public class MQTTClient
                     return;
                 }
 
-                // Decode the connection secret
                 var connectionDetails = _configService.DecodeConnectionSecret(config.ConnectionSecret);
                 if (connectionDetails == null)
                 {
@@ -74,21 +71,19 @@ public class MQTTClient
                 bool ws = broker.StartsWith("ws");
                 if (ws)
                 {
-                    _options = new MqttClientOptionsBuilder()
-                   .WithClientId(clientId)
-                    .WithWebSocketServer(broker)
-                    .WithCredentials(username, password)
-                    .WithCleanSession()
-                    .Build();
+                    _options = new MqttClientOptionsBuilder().WithClientId(clientId)
+                        .WithWebSocketServer(broker)
+                        .WithCredentials(username, password)
+                        .WithCleanSession()
+                        .Build();
                 }
                 else
                 {
-                    _options = new MqttClientOptionsBuilder()
-                  .WithClientId(clientId)
-                   .WithTcpServer(broker)
-                   .WithCredentials(username, password)
-                   .WithCleanSession()
-                   .Build();
+                    _options = new MqttClientOptionsBuilder().WithClientId(clientId)
+                        .WithTcpServer(broker)
+                        .WithCredentials(username, password)
+                        .WithCleanSession()
+                        .Build();
                 }
 
 
@@ -169,7 +164,6 @@ public class MQTTClient
 
             var value = match.Groups[1].Value.Trim();
 
-            // Cut off SIP parameters ( ;tag=... )
             int uriEnd = value.IndexOf('>');
             if (uriEnd >= 0)
                 return value.Substring(0, uriEnd + 1);
@@ -183,7 +177,7 @@ public class MQTTClient
                 return false;
 
             return cseq?.Contains("INVITE", StringComparison.OrdinalIgnoreCase) == true && sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) == true;
-           
+
         }
 
         public async Task PublishSipAsync(string src, string dest, string sipData, int totalPacketsReceived)
@@ -205,7 +199,7 @@ public class MQTTClient
             {
                 try
                 {
-                    const string prefix = "Win32_";
+                    const string prefix = "FetchitListenerdClient_";
 
                     if (!_clientId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                     {
@@ -213,42 +207,43 @@ public class MQTTClient
                     }
                     var payload = JsonSerializer.Serialize(new
                     {
-                        CallerID = callername,
-                        Number = number,
-                        Guid = Guid.NewGuid(),           // must be unique
-                        Line = "Main Office",
                         StartTime = DateTime.UtcNow,
                         EndTime = DateTime.UtcNow,
+                        Guid = Guid.NewGuid(),
                         ClientID = _clientId,
+                        Number = number,
+                        CallerID = callername,
+                        Line = "Main Office",
+                        AtlasId = "",
                         PhoneSystem = "R-Pi"
                     });
 
-                    var message = new MqttApplicationMessageBuilder()
-                   .WithTopic(_topicPublish)
-                   .WithPayload(payload)
-                   .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                   .Build();
+                    var message = new MqttApplicationMessageBuilder().WithTopic(_topicPublish)
+                        .WithPayload(payload)
+                        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                        .Build();
 
                     await _mqttClient.PublishAsync(message);
                     _logger.LogInformation(
-                                  "✅ {totalPacketsReceived}. SIP event published → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
-                                  totalPacketsReceived, fromRaw, number, callername, cseqRaw);
+                        "✅ {totalPacketsReceived}. SIP event published → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
+                        totalPacketsReceived,
+                        fromRaw,
+                        number,
+                        callername,
+                        cseqRaw);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
-                                ex,
-                                "{totalPacketsReceived}. Failed to publish SIP event. → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
-                                  totalPacketsReceived, fromRaw, number, callername, cseqRaw);
+                    _logger.LogError(ex,
+                        "{totalPacketsReceived}. Failed to publish SIP event. → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
+                        totalPacketsReceived,
+                        fromRaw,
+                        number,
+                        callername,
+                        cseqRaw);
                 }
 
             }
-            //else
-            //{
-            //    _logger.LogInformation(
-            //        "🔴 {totalPacketsReceived}. SIP message ignored (duplicate or unsupported). CallID={fromRaw}, CSeq={CSeq}",
-            //        totalPacketsReceived, fromRaw, cseqRaw);
-            //}
         }
     }
 }

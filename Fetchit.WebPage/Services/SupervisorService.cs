@@ -54,7 +54,7 @@ public class SupervisorService
             }
             else
             {
-                _logger.LogError("Failed to restart listenerd service. Exit code: {ExitCode}, Error: {Error}", 
+                _logger.LogError("Failed to restart listenerd service. Exit code: {ExitCode}, Error: {Error}",
                     process.ExitCode, error);
                 return false;
             }

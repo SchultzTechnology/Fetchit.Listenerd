@@ -250,18 +250,18 @@ namespace Fetchit.Listenerd
                 return;
 
             string sipText;
-           
+
             try
             {
                 sipText = Encoding.ASCII.GetString(
                     data.Slice(payloadStart, payloadLen));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError($"{ex} Failed to extract SIP text.");
                 return;
             }
-           // _logger.LogInformation($"{_totalPacketsReceived}. packet capture");
+            // _logger.LogInformation($"{_totalPacketsReceived}. packet capture");
             _sipQueue.Writer.TryWrite(
                 new SipPacket(
                     srcIp,
