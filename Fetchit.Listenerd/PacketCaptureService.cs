@@ -2,13 +2,12 @@
 using Fetchit.Listenerd.Service;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using PacketDotNet;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Fetchit.Listenerd
@@ -19,11 +18,26 @@ namespace Fetchit.Listenerd
         private readonly PacketCaptureSettings _settings;
         private readonly ILogger<PacketCaptureService> _logger;
         private MQTTClient.MqttService _mqtt;
-        private int _totalPacketsReceived = 0;
-        private int _sipPacketsProcessed = 0;
-        private DateTime _lastPacketTime = DateTime.MinValue;
 
-        public PacketCaptureService(IOptions<PacketCaptureSettings> settings, ILogger<PacketCaptureService> logger)
+        private int _totalPacketsReceived;
+        private volatile bool _stopping;
+
+        private readonly Channel<SipPacket> _sipQueue =
+            Channel.CreateBounded<SipPacket>(new BoundedChannelOptions(5000)
+            {
+                SingleReader = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            });
+
+        private record SipPacket(
+            string SourceIp,
+            string DestinationIp,
+            string SipText,
+            int TotalPacketsReceived);
+
+        public PacketCaptureService(
+            IOptions<PacketCaptureSettings> settings,
+            ILogger<PacketCaptureService> logger)
         {
             _settings = settings.Value;
             _logger = logger;
@@ -32,93 +46,119 @@ namespace Fetchit.Listenerd
         public void Start(MQTTClient.MqttService mqtt)
         {
             _mqtt = mqtt;
+
+            StartSipWorker();
             InitializeDevice();
             ConfigureDevice();
-            _device!.StartCapture();
+
             _logger.LogInformation("✓ Packet capture started successfully");
-            
-            // Start a background task to log statistics
-            //Task.Run(async () =>
-            //{
-            //    while (_device != null)
-            //    {
-            //        await Task.Delay(30000); // Every 30 seconds
-            //        var timeSinceLastPacket = _lastPacketTime == DateTime.MinValue 
-            //            ? "Never" 
-            //            : $"{(DateTime.Now - _lastPacketTime).TotalSeconds:F0}s ago";
-            //        _logger.LogInformation(
-            //            "📊 Stats: Total packets: {TotalPackets}, SIP packets: {SipPackets}, Last packet: {LastPacket}",
-            //            _totalPacketsReceived, _sipPacketsProcessed, timeSinceLastPacket);
-            //    }
-            //});
         }
 
         public void Stop()
         {
-            if (_device == null) return;
+            _stopping = true;
 
-            _device.StopCapture();
-            _device.Close();
-            //_logger.LogInformation("Packet capture stopped. Total: {Total}, SIP: {Sip}", 
-            //    _totalPacketsReceived, _sipPacketsProcessed);
+            if (_device == null)
+                return;
+
+            try
+            {
+                _device.OnPacketArrival -= OnPacketArrival;
+                _device.OnCaptureStopped -= OnCaptureStopped;
+
+                if (_device.Started)
+                    _device.StopCapture();
+
+                _device.Close();
+                _device.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during device shutdown");
+            }
+            finally
+            {
+                _device = null;
+            }
+        }
+
+        private void StartSipWorker()
+        {
+            Task.Run(async () =>
+            {
+                await foreach (var sip in _sipQueue.Reader.ReadAllAsync())
+                {
+                    await _mqtt.PublishSipAsync(
+                        sip.SourceIp,
+                        sip.DestinationIp,
+                        sip.SipText,
+                        sip.TotalPacketsReceived);
+                }
+            });
         }
 
         private void InitializeDevice()
         {
             var devices = CaptureDeviceList.Instance;
+
             if (devices.Count < 1)
                 throw new Exception("No network devices found.");
 
-            // Log available devices
-            _logger.LogInformation("Available network devices ({Count}):", devices.Count);
             for (int i = 0; i < devices.Count; i++)
             {
-                var device = devices[i];
-                _logger.LogInformation("  [{Index}] {Name}", i, device.Name);
-                _logger.LogInformation("      Description: {Description}", device.Description);
+                _logger.LogInformation(
+                    "  [{Index}] {Name} - {Description}",
+                    i,
+                    devices[i].Name,
+                    devices[i].Description);
             }
-        
+
             _device = _settings.DeviceSelectionMode.ToLower() switch
             {
                 "loopback" => devices.FirstOrDefault(d =>
                     d.Name.Contains("loopback", StringComparison.OrdinalIgnoreCase) ||
                     d.Description.Contains("loopback", StringComparison.OrdinalIgnoreCase)),
-                "first" => devices.FirstOrDefault() ?? devices[0],
+
+                "first" => devices.FirstOrDefault(),
+
                 "byname" when !string.IsNullOrEmpty(_settings.DeviceName) =>
                     devices.FirstOrDefault(d =>
                         d.Name.Contains(_settings.DeviceName, StringComparison.OrdinalIgnoreCase) ||
                         d.Description.Contains(_settings.DeviceName, StringComparison.OrdinalIgnoreCase)),
+
                 "auto" => devices.FirstOrDefault(d =>
-                    d.Name.Contains("loopback", StringComparison.OrdinalIgnoreCase) ||
-                    d.Description.Contains("loopback", StringComparison.OrdinalIgnoreCase))
-                    ?? devices.FirstOrDefault()
-                    ?? devices[0],
-                "any" => devices.FirstOrDefault(d => 
+                    d.Name.Contains("loopback", StringComparison.OrdinalIgnoreCase))
+                    ?? devices.FirstOrDefault(),
+
+                "any" => devices.FirstOrDefault(d =>
                     d.Name.Equals("any", StringComparison.OrdinalIgnoreCase))
-                    ?? devices.FirstOrDefault()
-                    ?? devices[0],
-                _ => devices[0]
+                    ?? devices.FirstOrDefault(),
+
+                _ => devices.FirstOrDefault()
             };
 
             if (_device == null)
-                throw new Exception($"No suitable device found. Mode: {_settings.DeviceSelectionMode}, Name: {_settings.DeviceName}");
+                throw new Exception("No suitable capture device found.");
 
-            _logger.LogInformation("✓ Selected device: {Name}", _device.Name);
-            _logger.LogInformation("  Description: {Description}", _device.Description);
+            _logger.LogInformation("Selected device: {Name}", _device.Name);
+            _logger.LogInformation("Description: {Description}", _device.Description);
         }
 
         private void ConfigureDevice()
         {
-            _device!.OnPacketArrival += OnPacketArrival;
-            
             try
             {
-                // Open in promiscuous mode
-                _device.Open(DeviceModes.Promiscuous, 1000);
-                _logger.LogInformation("✓ Device opened in promiscuous mode");
-                
-                _device.Filter = $"udp port {_settings.SipPort}";
-                _logger.LogInformation("✓ Device configured with filter: udp port {Port}", _settings.SipPort);
+                _device!.Open(DeviceModes.Promiscuous, 1000);
+
+                _device!.Filter = $"udp port {_settings.SipPort}";
+                _device.OnPacketArrival += OnPacketArrival;
+                _device.OnCaptureStopped += OnCaptureStopped;
+
+                _device.StartCapture();
+
+                _logger.LogInformation(
+                    "Device configured. Filter: udp port {Port}",
+                    _settings.SipPort);
             }
             catch (Exception ex)
             {
@@ -127,57 +167,107 @@ namespace Fetchit.Listenerd
             }
         }
 
+        private void OnCaptureStopped(object sender, CaptureStoppedEventStatus status)
+        {
+            _logger.LogError(
+                "🛑 Capture stopped. Reason={Status}",
+                status);
+        }
+
         private void OnPacketArrival(object sender, PacketCapture e)
         {
+            if (_stopping)
+                return;
+
             _totalPacketsReceived++;
-            _lastPacketTime = DateTime.Now;
-            
+
+            if (_device == null || !_device.Started)
+                return;
+
+            // SAFE: directly use packet bytes (no native calls)
+            ReadOnlySpan<byte> data = e.Data;
+            if (data.IsEmpty)
+                return;
+
+            int length = data.Length;
+
+            // Optional but recommended: link type safety
+            if (e.Device.LinkType != _device.LinkType)
+                return;
+
+            // -------- Ethernet --------
+            if (length < 14)
+                return;
+
+            int etherType = (data[12] << 8) | data[13];
+
+            // Only IPv4
+            if (etherType != 0x0800)
+                return;
+
+            // -------- IPv4 --------
+            int ipStart = 14;
+
+            byte versionAndHeaderLen = data[ipStart];
+            int ipVersion = versionAndHeaderLen >> 4;
+            if (ipVersion != 4)
+                return;
+
+            int ipHeaderLen = (versionAndHeaderLen & 0x0F) * 4;
+            if (length < ipStart + ipHeaderLen)
+                return;
+
+            // Protocol (UDP = 17)
+            if (data[ipStart + 9] != 17)
+                return;
+
+            string srcIp =
+                $"{data[ipStart + 12]}.{data[ipStart + 13]}.{data[ipStart + 14]}.{data[ipStart + 15]}";
+
+            string dstIp =
+                $"{data[ipStart + 16]}.{data[ipStart + 17]}.{data[ipStart + 18]}.{data[ipStart + 19]}";
+
+            // -------- UDP --------
+            int udpStart = ipStart + ipHeaderLen;
+            if (length < udpStart + 8)
+                return;
+
+            int srcPort = (data[udpStart] << 8) | data[udpStart + 1];
+            int dstPort = (data[udpStart + 2] << 8) | data[udpStart + 3];
+
+            if (srcPort != _settings.SipPort && dstPort != _settings.SipPort)
+                return;
+
+            int udpLen = (data[udpStart + 4] << 8) | data[udpStart + 5];
+            if (udpLen < 8 || length < udpStart + udpLen)
+                return;
+
+            // -------- SIP Payload --------
+            int payloadStart = udpStart + 8;
+            int payloadLen = udpLen - 8;
+
+            if (payloadLen <= 0)
+                return;
+
+            string sipText;
+           
             try
             {
-                var raw = e.GetPacket();
-                
-                // Skip abnormally large packets to prevent crashes
-                if (raw.Data.Length > 65535)
-                {
-                    _logger.LogWarning("Skipping abnormally large packet: {Length} bytes", raw.Data.Length);
-                    return;
-                }
-                
-                var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
-
-                var ip = packet.Extract<IPv4Packet>();
-                var udp = packet.Extract<UdpPacket>();
-
-                if (ip == null || udp == null)
-                {
-                    _logger.LogWarning("Packet received but not IPv4/UDP - LinkLayer: {LinkLayer}", raw.LinkLayerType);
-                    return;
-                }
-
-                // Only SIP packets
-                if (udp.SourcePort != _settings.SipPort && udp.DestinationPort != _settings.SipPort)
-                {
-                    return;
-                }
-
-                var payload = udp.PayloadData;
-                if (payload == null || payload.Length == 0)
-                    return;
-                
-                string sourceIp = ip.SourceAddress.ToString();
-                string destinationIp = ip.DestinationAddress.ToString();
-                string sipText = Encoding.UTF8.GetString(payload);
-
-                _sipPacketsProcessed++;
-                _logger.LogInformation("📞 SIP Packet #{Count}: {SourceIp} -> {DestIp}", 
-                    _sipPacketsProcessed, sourceIp, destinationIp);
-
-                _mqtt.PublishSipAsync(sourceIp, destinationIp, sipText);
+                sipText = Encoding.ASCII.GetString(
+                    data.Slice(payloadStart, payloadLen));
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                _logger.LogError(ex, "Error processing packet");
+                _logger.LogError($"{ex} Failed to extract SIP text.");
+                return;
             }
+           // _logger.LogInformation($"{_totalPacketsReceived}. packet capture");
+            _sipQueue.Writer.TryWrite(
+                new SipPacket(
+                    srcIp,
+                    dstIp,
+                    sipText,
+                    _totalPacketsReceived));
         }
     }
 }

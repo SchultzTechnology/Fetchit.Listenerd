@@ -1,11 +1,14 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Protocol;
+using SQLitePCL;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Fetchit.Listenerd.Service;
 
@@ -21,11 +24,13 @@ public class MQTTClient
 
         private string _topicPublish;
         private bool _isInitialized = false;
+        private string _clientId = "";
 
         public MqttService(ILogger<MqttService> logger, MqttConfigService configService)
         {
             _logger = logger;
             _configService = configService;
+            //_ongoingCalls = new List<string>();
         }
 
         public async Task InitializeAsync()
@@ -53,6 +58,7 @@ public class MQTTClient
                 string broker = connectionDetails.Broker;
                 int port = config.BrokerPort;
                 string clientId = connectionDetails.ClientId;
+                _clientId = connectionDetails.ClientId;
                 string username = connectionDetails.UserName;
                 string password = connectionDetails.Password;
 
@@ -64,13 +70,28 @@ public class MQTTClient
 
                 var factory = new MqttFactory();
                 _mqttClient = factory.CreateMqttClient();
-                
-                _options = new MqttClientOptionsBuilder()
+
+                bool ws = broker.StartsWith("ws");
+                if (ws)
+                {
+                    _options = new MqttClientOptionsBuilder()
                    .WithClientId(clientId)
                     .WithWebSocketServer(broker)
                     .WithCredentials(username, password)
                     .WithCleanSession()
-                    .Build();         
+                    .Build();
+                }
+                else
+                {
+                    _options = new MqttClientOptionsBuilder()
+                  .WithClientId(clientId)
+                   .WithTcpServer(broker)
+                   .WithCredentials(username, password)
+                   .WithCleanSession()
+                   .Build();
+                }
+
+
 
                 _mqttClient.ConnectedAsync += async e =>
                 {
@@ -109,8 +130,63 @@ public class MQTTClient
             }
         }
 
-      
-        public async Task PublishSipAsync(string src, string dest, string sipData)
+        private string GetSipNumber(string sipData, string header)
+        {
+            var match = Regex.Match(
+                sipData,
+                $@"^{header}:\s*.*?<sip:([^@>]+)",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value : "Unknown";
+        }
+
+        private string GetSipDisplayName(string sipData, string header)
+        {
+            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+                return string.Empty;
+
+            var match = Regex.Match(
+                sipData,
+                $@"^{Regex.Escape(header)}\s*:\s*""?([^""<]+)""?\s*<sip:",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
+        }
+
+
+        private string GetSipHeaderRaw(string sipData, string header)
+        {
+            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+                return string.Empty;
+
+            var match = Regex.Match(
+                sipData,
+                $@"^{Regex.Escape(header)}\s*:\s*(.+)$",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            if (!match.Success)
+                return string.Empty;
+
+            var value = match.Groups[1].Value.Trim();
+
+            // Cut off SIP parameters ( ;tag=... )
+            int uriEnd = value.IndexOf('>');
+            if (uriEnd >= 0)
+                return value.Substring(0, uriEnd + 1);
+
+            return value;
+        }
+
+        public bool IsIncomingCallInvite(string callId, string cseq, string sipData)
+        {
+            if (string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(cseq))
+                return false;
+
+            return cseq?.Contains("INVITE", StringComparison.OrdinalIgnoreCase) == true && sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) == true;
+           
+        }
+
+        public async Task PublishSipAsync(string src, string dest, string sipData, int totalPacketsReceived)
         {
             if (_mqttClient == null || !_mqttClient.IsConnected)
             {
@@ -121,24 +197,58 @@ public class MQTTClient
                 }
                 return;
             }
-
-            var payload = JsonSerializer.Serialize(new
+            string fromRaw = GetSipHeaderRaw(sipData, "From");
+            string cseqRaw = GetSipHeaderRaw(sipData, "CSeq");
+            string number = GetSipNumber(sipData, "From");
+            string callername = GetSipDisplayName(sipData, "From");
+            if (IsIncomingCallInvite(fromRaw, cseqRaw, sipData))
             {
-                source_ip = src,
-                destination_ip = dest,
-                sip_data = sipData,
-                timestamp = DateTime.UtcNow
-            });
+                try
+                {
+                    const string prefix = "Win32_";
 
-            var message = new MqttApplicationMessageBuilder()
-                .WithTopic(_topicPublish)
-                .WithPayload(payload)
-                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .Build();
+                    if (!_clientId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _clientId = prefix + _clientId;
+                    }
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        CallerID = callername,
+                        Number = number,
+                        Guid = Guid.NewGuid(),           // must be unique
+                        Line = "Main Office",
+                        StartTime = DateTime.UtcNow,
+                        EndTime = DateTime.UtcNow,
+                        ClientID = _clientId,
+                        PhoneSystem = "R-Pi"
+                    });
 
-            await _mqttClient.PublishAsync(message);
+                    var message = new MqttApplicationMessageBuilder()
+                   .WithTopic(_topicPublish)
+                   .WithPayload(payload)
+                   .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                   .Build();
 
-            _logger.LogInformation($"Published SIP Packet → {src} → {dest}");
+                    await _mqttClient.PublishAsync(message);
+                    _logger.LogInformation(
+                                  "✅ {totalPacketsReceived}. SIP event published → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
+                                  totalPacketsReceived, fromRaw, number, callername, cseqRaw);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                                ex,
+                                "{totalPacketsReceived}. Failed to publish SIP event. → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
+                                  totalPacketsReceived, fromRaw, number, callername, cseqRaw);
+                }
+
+            }
+            //else
+            //{
+            //    _logger.LogInformation(
+            //        "🔴 {totalPacketsReceived}. SIP message ignored (duplicate or unsupported). CallID={fromRaw}, CSeq={CSeq}",
+            //        totalPacketsReceived, fromRaw, cseqRaw);
+            //}
         }
     }
 }

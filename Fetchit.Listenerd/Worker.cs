@@ -20,12 +20,11 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-
         await _mqtt.InitializeAsync();
         _captureService.Start(_mqtt);
-        
+
         _logger.LogInformation("Worker started successfully");
-        
+
         while (!stoppingToken.IsCancellationRequested)
         {
             // Heartbeat every 5 minutes instead of every second
@@ -35,7 +34,7 @@ public class Worker : BackgroundService
             }
             await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         }
-        
+
         _logger.LogInformation("Worker stopping");
         _captureService.Stop();
     }
