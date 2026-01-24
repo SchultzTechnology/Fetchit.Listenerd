@@ -199,12 +199,6 @@ public class MQTTClient
             {
                 try
                 {
-                    const string prefix = "FetchitListenerdClient_";
-
-                    if (!_clientId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _clientId = prefix + _clientId;
-                    }
                     var payload = JsonSerializer.Serialize(new
                     {
                         StartTime = DateTime.UtcNow,
@@ -220,7 +214,14 @@ public class MQTTClient
 
                     _logger.LogInformation("Payload: {Payload}", payload);
 
-                    var message = new MqttApplicationMessageBuilder().WithTopic(_topicPublish)
+                    const string prefix = "FetchitListenerdClient_";
+                    if (!_clientId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _clientId = prefix + _clientId;
+                    }
+
+                    var message = new MqttApplicationMessageBuilder()
+                        .WithTopic(_topicPublish)
                         .WithPayload(payload)
                         .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                         .Build();
