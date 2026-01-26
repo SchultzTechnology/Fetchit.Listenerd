@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Fetchit.Listenerd;
 using Fetchit.Listenerd.Data;
 using Fetchit.Listenerd.Models;
 using Fetchit.Listenerd.Service;
@@ -142,8 +143,9 @@ public class MQTTClient
         return false;
     }
 
-    public async Task PublishSipAsync(Fetchit.Listenerd.SipPacket packet)
+    public async Task PublishSipAsync(SipPacket packet)
     {
+        _logger.LogInformation("Incoming SIP packet to publish via MQTT {packet}", packet);
         if (!EnsureConnected())
         {
             _logger.LogWarning("Cannot publish SIP message - MQTT client not connected");
@@ -201,7 +203,7 @@ public class MQTTClient
                 .Build();
 
             _logger.LogInformation("Publishing SIP message to MQTT topic {Topic}", _mqttConfiguration.TopicPublish);
-            _logger.LogInformation("MQTT Payload: {Payload}", jsonPayload);
+            _logger.LogDebug("MQTT Payload: {Payload}", jsonPayload);
 
             await _mqttClient.PublishAsync(message);
         }
