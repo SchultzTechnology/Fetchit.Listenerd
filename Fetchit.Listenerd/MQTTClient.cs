@@ -200,6 +200,9 @@ public class MQTTClient
                 .WithRetainFlag(false)
                 .Build();
 
+            _logger.LogInformation("Publishing SIP message to MQTT topic {Topic}", _mqttConfiguration.TopicPublish);
+            _logger.LogInformation("MQTT Payload: {Payload}", jsonPayload);
+
             await _mqttClient.PublishAsync(message);
         }
         catch (Exception ex)
