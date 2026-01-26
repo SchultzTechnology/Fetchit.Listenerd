@@ -18,7 +18,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
-var dataPath = Directory.Exists("/app/data") ? "/app/data" : "./data";
+var dataPath = Directory.Exists("/app/data") ? "/app/data" : "../data";
 Directory.CreateDirectory(dataPath);
 
 var dbPath = Path.Combine(dataPath, "mqttconfig.db");

@@ -3,6 +3,7 @@ using Fetchit.Listenerd.Options;
 using Fetchit.Listenerd.Service;
 using Fetchit.Listenerd.Data;
 using Microsoft.EntityFrameworkCore;
+using static MQTTClient;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -12,7 +13,7 @@ builder.Services.Configure<PacketCaptureSettings>(
 
 // Configure SQLite database - use shared database with WebPage
 // Use /app/data in Docker, ./data locally
-var dataPath = Directory.Exists("/app/data") ? "/app/data" : "./data";
+var dataPath = Directory.Exists("/app/data") ? "/app/data" : "../data";
 Directory.CreateDirectory(dataPath); // Ensure directory exists
 
 var dbPath = Path.Combine(dataPath, "mqttconfig.db");
@@ -21,7 +22,7 @@ builder.Services.AddDbContext<MqttConfigContext>(options =>
 
 // Register services
 builder.Services.AddSingleton<MqttConfigService>();
-builder.Services.AddSingleton<MQTTClient.MqttService>();
+builder.Services.AddSingleton<MQTTClient>();
 builder.Services.AddSingleton<PacketCaptureService>();
 builder.Services.AddHostedService<Worker>();
 
