@@ -5,6 +5,7 @@ using Fetchit.Listenerd.Service;
 using Microsoft.EntityFrameworkCore;
 using MQTTnet;
 using MQTTnet.Client;
+using MQTTnet.Protocol;
 
 public class MQTTClient
 {
@@ -158,15 +159,14 @@ public class MQTTClient
         // Use the rich properties parsed by the class
         var payload = new
         {
-            Source = packet.SourceIp,
-            Destination = packet.DestinationIp,
-            Caller = packet.CallerName,
-            Extension = packet.Number,
-            IsInvite = packet.IsInvite,
-            FromHeader = packet.FromRaw,
-            CSeq = packet.CSeqRaw,
-            Timestamp = DateTime.UtcNow,
-            PacketCount = packet.TotalPacketsReceived
+            _startTime = DateTime.UtcNow.ToString("o"),
+            _endTime = DateTime.UtcNow.ToString("o"),
+            Guid = Guid.NewGuid().ToString(),
+            ClientID = _connectionSecret?.ClientId ?? "UnknownClient",
+            Number = packet.Number,
+            CallerID = packet.CallerName,
+            Line = "Main",
+            PhoneSystem = "Fetchit Listenerd"
         };
 
         string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
@@ -196,7 +196,7 @@ public class MQTTClient
             var message = new MqttApplicationMessageBuilder()
                 .WithTopic(_mqttConfiguration.TopicPublish)
                 .WithPayload(jsonPayload)
-                .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithRetainFlag(false)
                 .Build();
 
