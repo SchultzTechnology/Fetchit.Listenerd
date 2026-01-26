@@ -17,7 +17,7 @@ namespace Fetchit.Listenerd
         private ICaptureDevice? _device;
         private readonly PacketCaptureSettings _settings;
         private readonly ILogger<PacketCaptureService> _logger;
-        private MQTTClient.MqttService _mqtt;
+        private MQTTClient _mqtt;
 
         private int _totalPacketsReceived;
         private volatile bool _stopping;
@@ -43,18 +43,12 @@ namespace Fetchit.Listenerd
             _logger = logger;
         }
 
-        public void Start(MQTTClient.MqttService mqtt)
+        internal void AssignMqttClient(MQTTClient mqtt)
         {
             _mqtt = mqtt;
-
-            StartSipWorker();
-            InitializeDevice();
-            ConfigureDevice();
-
-            _logger.LogInformation("✓ Packet capture started successfully");
         }
 
-        public void Stop()
+        internal void Stop()
         {
             _stopping = true;
 
@@ -82,22 +76,24 @@ namespace Fetchit.Listenerd
             }
         }
 
-        private void StartSipWorker()
+        internal void StartSipWorker()
         {
             Task.Run(async () =>
             {
                 await foreach (var sip in _sipQueue.Reader.ReadAllAsync())
                 {
-                    await _mqtt.PublishSipAsync(
+                    _mqtt.BuildSipMessage(
                         sip.SourceIp,
                         sip.DestinationIp,
                         sip.SipText,
                         sip.TotalPacketsReceived);
+
+                    await _mqtt.Publ
                 }
             });
         }
 
-        private void InitializeDevice()
+        internal void InitializeDevice()
         {
             var devices = CaptureDeviceList.Instance;
 
@@ -144,7 +140,7 @@ namespace Fetchit.Listenerd
             _logger.LogInformation("Description: {Description}", _device.Description);
         }
 
-        private void ConfigureDevice()
+        internal void ConfigureDevice()
         {
             try
             {
@@ -269,5 +265,6 @@ namespace Fetchit.Listenerd
                     sipText,
                     _totalPacketsReceived));
         }
+
     }
 }

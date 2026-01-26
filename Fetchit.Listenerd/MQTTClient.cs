@@ -1,252 +1,195 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+﻿using System.Text.RegularExpressions;
+using Fetchit.Listenerd.Data;
+using Fetchit.Listenerd.Models;
+using Fetchit.Listenerd.Service;
+using Microsoft.EntityFrameworkCore;
 using MQTTnet;
 using MQTTnet.Client;
-using MQTTnet.Protocol;
-using SQLitePCL;
-using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
-
-namespace Fetchit.Listenerd.Service;
 
 public class MQTTClient
 {
-    public class MqttService
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<MQTTClient> _logger;
+    private MqttClientOptions _mqttOptions;
+    private IMqttClient _mqttClient;
+    private MqttConfiguration _mqttConfiguration;
+    private ConnectionSecretDto _connectionSecret;
+    private bool _connected;
+
+    public MQTTClient(ILogger<MQTTClient> logger, IServiceProvider serviceProvider)
     {
-        private readonly ILogger<MqttService> _logger;
-        private readonly MqttConfigService _configService;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
 
-        private IMqttClient _mqttClient;
-        private MqttClientOptions _options;
-
-        private string _topicPublish;
-        private bool _isInitialized = false;
-        private string _clientId = "";
-
-        public MqttService(ILogger<MqttService> logger, MqttConfigService configService)
+    public async Task LoadMqttSettingsAsync()
+    {
+        try
         {
-            _logger = logger;
-            _configService = configService;
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<MqttConfigContext>();
+
+            _mqttConfiguration = await context.MqttConfigurations
+                .OrderByDescending(c => c.UpdatedAt)
+                .FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("No MQTT configuration found.");
+
+            _connectionSecret = System.Text.Json.JsonSerializer.Deserialize<ConnectionSecretDto>(_mqttConfiguration.ConnectionSecret)
+                ?? throw new InvalidOperationException("Invalid connection secret.");
         }
-
-        public async Task InitializeAsync()
+        catch (System.Exception ex)
         {
-            try
+            _logger.LogError(ex, "Error configuring MQTT client");
+            throw;
+        }
+    }
+
+    public async Task InitializeMqttBrokerAsync()
+    {
+        try
+        {
+            var _clientId = "FetchitListenerdClient_" + _connectionSecret.ClientId;
+
+            _logger.LogInformation("Initializing MQTT client");
+            _logger.LogInformation("    MQTT Broker: {Broker}", _connectionSecret.Broker);
+            _logger.LogInformation("    MQTT ClientId: {ClientId}", _clientId);
+            _logger.LogInformation("    MQTT LocationId: {LocationId}", _connectionSecret.LocationId);
+            _logger.LogInformation("    MQTT Username: {Username}", _connectionSecret.UserName);
+            _logger.LogInformation("    MQTT Password: {Password}", _connectionSecret.Password);
+            _logger.LogInformation("    MQTT BrokerPort: {BrokerPort}", _mqttConfiguration.BrokerPort);
+            _logger.LogInformation("    MQTT TopicSubscribe: {TopicSubscribe}", _mqttConfiguration.TopicSubscribe);
+            _logger.LogInformation("    MQTT TopicPublish: {TopicPublish}", _mqttConfiguration.TopicPublish);
+
+            var factory = new MqttFactory();
+            _mqttClient = factory.CreateMqttClient();
+
+            if (_connectionSecret.Broker.StartsWith("ws"))
             {
-                var config = await _configService.GetLatestConfigurationAsync();
-                if (config == null)
-                {
-                    _logger.LogError("No MQTT configuration found in database. Please configure MQTT settings in the web interface.");
-                    return;
-                }
-
-                var connectionDetails = _configService.DecodeConnectionSecret(config.ConnectionSecret);
-                if (connectionDetails == null)
-                {
-                    _logger.LogError("Failed to decode connection secret. Please verify the configuration.");
-                    return;
-                }
-
-                _topicPublish = config.TopicPublish;
-
-                string broker = connectionDetails.Broker;
-                int port = config.BrokerPort;
-                string clientId = connectionDetails.ClientId;
-                _clientId = connectionDetails.ClientId;
-                string username = connectionDetails.UserName;
-                string password = connectionDetails.Password;
-
-                _logger.LogInformation("Initializing MQTT with configuration from database:");
-                _logger.LogInformation("  Broker: {Broker}", broker);
-                _logger.LogInformation("  Port: {Port}", port);
-                _logger.LogInformation("  ClientId: {ClientId}", clientId);
-                _logger.LogInformation("  Topic Publish: {TopicPublish}", _topicPublish);
-
-                var factory = new MqttFactory();
-                _mqttClient = factory.CreateMqttClient();
-
-                bool ws = broker.StartsWith("ws");
-                if (ws)
-                {
-                    _options = new MqttClientOptionsBuilder().WithClientId(clientId)
-                        .WithWebSocketServer(broker)
-                        .WithCredentials(username, password)
-                        .WithCleanSession()
-                        .Build();
-                }
-                else
-                {
-                    _options = new MqttClientOptionsBuilder().WithClientId(clientId)
-                        .WithTcpServer(broker)
-                        .WithCredentials(username, password)
-                        .WithCleanSession()
-                        .Build();
-                }
-
-
-
-                _mqttClient.ConnectedAsync += async e =>
-                {
-                    _logger.LogInformation("MQTT Connected (v3.1.1).");
-                    _isInitialized = true;
-                };
-
-                _mqttClient.DisconnectedAsync += async e =>
-                {
-                    _logger.LogWarning("MQTT Disconnected. Reconnecting...");
-                    _isInitialized = false;
-                    await Task.Delay(2000);
-                    await ConnectAsync();
-                };
-
-                await ConnectAsync();
+                _mqttOptions = new MqttClientOptionsBuilder()
+                    .WithClientId(_clientId)
+                    .WithWebSocketServer(_connectionSecret.Broker)
+                    .WithCredentials(_connectionSecret.UserName, _connectionSecret.Password)
+                    .WithCleanSession()
+                    .Build();
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error initializing MQTT client");
+                _mqttOptions = new MqttClientOptionsBuilder()
+                    .WithClientId(_clientId)
+                    .WithTcpServer(_connectionSecret.Broker, _mqttConfiguration.BrokerPort)
+                    .WithCredentials(_connectionSecret.UserName, _connectionSecret.Password)
+                    .WithCleanSession()
+                    .Build();
             }
-        }
 
-        private async Task ConnectAsync()
-        {
-            try
+            _mqttClient.ConnectedAsync += async e =>
             {
-                if (_mqttClient != null && _options != null)
-                {
-                    await _mqttClient.ConnectAsync(_options);
-                }
-            }
-            catch (Exception ex)
+                _connected = true;
+                _logger.LogInformation("MQTT Connected (v3.1.1).");
+            };
+
+            _mqttClient.DisconnectedAsync += async e =>
             {
-                _logger.LogError(ex, "MQTT Connection error");
-            }
-        }
-
-        private string GetSipNumber(string sipData, string header)
-        {
-            var match = Regex.Match(
-                sipData,
-                $@"^{header}:\s*.*?<sip:([^@>]+)",
-                RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-            return match.Success ? match.Groups[1].Value : "Unknown";
-        }
-
-        private string GetSipDisplayName(string sipData, string header)
-        {
-            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
-                return string.Empty;
-
-            var match = Regex.Match(
-                sipData,
-                $@"^{Regex.Escape(header)}\s*:\s*""?([^""<]+)""?\s*<sip:",
-                RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
-        }
-
-
-        private string GetSipHeaderRaw(string sipData, string header)
-        {
-            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
-                return string.Empty;
-
-            var match = Regex.Match(
-                sipData,
-                $@"^{Regex.Escape(header)}\s*:\s*(.+)$",
-                RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-            if (!match.Success)
-                return string.Empty;
-
-            var value = match.Groups[1].Value.Trim();
-
-            int uriEnd = value.IndexOf('>');
-            if (uriEnd >= 0)
-                return value.Substring(0, uriEnd + 1);
-
-            return value;
-        }
-
-        public bool IsIncomingCallInvite(string callId, string cseq, string sipData)
-        {
-            if (string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(cseq))
-                return false;
-
-            return cseq?.Contains("INVITE", StringComparison.OrdinalIgnoreCase) == true && sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) == true;
-
-        }
-
-        public async Task PublishSipAsync(string src, string dest, string sipData, int totalPacketsReceived)
-        {
-            if (_mqttClient == null || !_mqttClient.IsConnected)
-            {
-                if (!_isInitialized)
-                {
-                    _logger.LogWarning("MQTT client not initialized. Attempting to initialize...");
-                    await InitializeAsync();
-                }
-                return;
-            }
-            string fromRaw = GetSipHeaderRaw(sipData, "From");
-            string cseqRaw = GetSipHeaderRaw(sipData, "CSeq");
-            string number = GetSipNumber(sipData, "From");
-            string callername = GetSipDisplayName(sipData, "From");
-            if (IsIncomingCallInvite(fromRaw, cseqRaw, sipData))
-            {
+                _connected = false;
+                _logger.LogWarning("MQTT Disconnected. Reconnecting...");
+                await Task.Delay(2000);
                 try
                 {
-                    var payload = JsonSerializer.Serialize(new
-                    {
-                        StartTime = DateTime.UtcNow,
-                        EndTime = DateTime.UtcNow,
-                        Guid = Guid.NewGuid(),
-                        ClientID = _clientId,
-                        Number = number,
-                        CallerID = callername,
-                        Line = "Main Office",
-                        AtlasId = "",
-                        PhoneSystem = "R-Pi"
-                    });
-
-                    _logger.LogInformation("Payload: {Payload}", payload);
-
-                    const string prefix = "FetchitListenerdClient_";
-                    if (!_clientId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _clientId = prefix + _clientId;
-                    }
-
-                    var message = new MqttApplicationMessageBuilder()
-                        .WithTopic(_topicPublish)
-                        .WithPayload(payload)
-                        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                        .Build();
-
-                    await _mqttClient.PublishAsync(message);
-                    _logger.LogInformation(
-                        "✅ {totalPacketsReceived}. SIP event published → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
-                        totalPacketsReceived,
-                        fromRaw,
-                        number,
-                        callername,
-                        cseqRaw);
+                    if (_mqttClient != null && _mqttOptions != null)
+                        await _mqttClient.ConnectAsync(_mqttOptions);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
-                        "{totalPacketsReceived}. Failed to publish SIP event. → CallID={CallId}, Number={Number}, Name={Name}, CSeq={CSeq}",
-                        totalPacketsReceived,
-                        fromRaw,
-                        number,
-                        callername,
-                        cseqRaw);
+                    _logger.LogError(ex, "MQTT Connection error");
                 }
-
-            }
+            };
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing MQTT client");
+        }
+    }
+
+
+    public Task PublishSipAsync(string sourceIp, string destinationIp, string sipText, int totalPacketsReceived)
+    {
+        if (_mqttClient == null)
+        {
+            _logger.LogWarning("MQTT client is not initialized.");
+            return Task.CompletedTask;
+        }
+
+        if (!_mqttClient.IsConnected)
+        {
+            _logger.LogWarning("MQTT client is not connected.");
+            return Task.CompletedTask;
+        }
+
+        if (!_connected)
+        {
+            _logger.LogWarning("MQTT client is not connected (internal flag).");
+            return Task.CompletedTask;
+        }
+
+
+
+
+        // Simulate publishing SIP message to MQTT broker
+        _logger.LogInformation("Published SIP message from {SourceIp} to {DestinationIp} with {TotalPacketsReceived} packets", sourceIp, destinationIp, totalPacketsReceived);
+        return Task.CompletedTask;
+    }
+    private string GetSipNumber(string sipData, string header)
+    {
+        var match = Regex.Match(
+            sipData,
+            $@"^{header}:\s*.*?<sip:([^@>]+)",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+        return match.Success ? match.Groups[1].Value : "Unknown";
+    }
+
+    private string GetSipDisplayName(string sipData, string header)
+    {
+        if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+            return string.Empty;
+
+        var match = Regex.Match(
+            sipData,
+            $@"^{Regex.Escape(header)}\s*:\s*""?([^""<]+)""?\s*<sip:",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+        return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
+    }
+
+
+    private string GetSipHeaderRaw(string sipData, string header)
+    {
+        if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+            return string.Empty;
+
+        var match = Regex.Match(
+            sipData,
+            $@"^{Regex.Escape(header)}\s*:\s*(.+)$",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+        if (!match.Success)
+            return string.Empty;
+
+        var value = match.Groups[1].Value.Trim();
+
+        int uriEnd = value.IndexOf('>');
+        if (uriEnd >= 0)
+            return value.Substring(0, uriEnd + 1);
+
+        return value;
+    }
+
+    public bool IsIncomingCallInvite(string callId, string cseq, string sipData)
+    {
+        if (string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(cseq))
+            return false;
+
+        return cseq?.Contains("INVITE", StringComparison.OrdinalIgnoreCase) == true && sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) == true;
+
     }
 }

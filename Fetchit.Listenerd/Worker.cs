@@ -10,8 +10,8 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly PacketCaptureService _captureService;
-    private readonly MQTTClient.MqttService _mqtt;
-    public Worker(ILogger<Worker> logger, PacketCaptureService captureService, MQTTClient.MqttService mqtt)
+    private readonly MQTTClient _mqtt;
+    public Worker(ILogger<Worker> logger, PacketCaptureService captureService, MQTTClient mqtt)
     {
         _logger = logger;
         _captureService = captureService;
@@ -20,8 +20,13 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await _mqtt.InitializeAsync();
-        _captureService.Start(_mqtt);
+        await _mqtt.LoadMqttSettingsAsync();
+        await _mqtt.InitializeMqttBrokerAsync();
+        _captureService.AssignMqttClient(_mqtt);
+        _captureService.StartSipWorker();
+        _captureService.InitializeDevice();
+        _captureService.ConfigureDevice();
+        
 
         _logger.LogInformation("Worker started successfully");
 
