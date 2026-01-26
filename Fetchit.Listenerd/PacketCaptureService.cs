@@ -7,17 +7,108 @@ using SharpPcap.LibPcap;
 using System;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Fetchit.Listenerd
 {
+    public class SipPacket
+    {
+        public string SourceIp { get; }
+        public string DestinationIp { get; }
+        public string RawSipText { get; }
+        public int TotalPacketsReceived { get; }
+
+        // Parsed Properties
+        public string FromRaw { get; }
+        public string CSeqRaw { get; }
+        public string Number { get; }
+        public string CallerName { get; }
+        public bool IsInvite { get; }
+
+        public SipPacket(
+            string sourceIp,
+            string destinationIp,
+            string sipText,
+            int totalPacketsReceived)
+        {
+            SourceIp = sourceIp;
+            DestinationIp = destinationIp;
+            RawSipText = sipText;
+            TotalPacketsReceived = totalPacketsReceived;
+
+            // Perform parsing during initialization
+            FromRaw = GetSipHeaderRaw(sipText, "From");
+            CSeqRaw = GetSipHeaderRaw(sipText, "CSeq");
+            Number = GetSipNumber(sipText, "From");
+            CallerName = GetSipDisplayName(sipText, "From");
+            
+            // Determine if it is an incoming invite
+            IsInvite = IsIncomingCallInvite(CSeqRaw, sipText);
+        }
+
+        private string GetSipNumber(string sipData, string header)
+        {
+            var match = Regex.Match(
+                sipData,
+                $@"^{Regex.Escape(header)}:\s*.*?<sip:([^@>]+)",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value : "Unknown";
+        }
+
+        private string GetSipDisplayName(string sipData, string header)
+        {
+            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+                return string.Empty;
+
+            var match = Regex.Match(
+                sipData,
+                $@"^{Regex.Escape(header)}\s*:\s*""?([^""<]+)""?\s*<sip:",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
+        }
+
+        private string GetSipHeaderRaw(string sipData, string header)
+        {
+            if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
+                return string.Empty;
+
+            var match = Regex.Match(
+                sipData,
+                $@"^{Regex.Escape(header)}\s*:\s*(.+)$",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            if (!match.Success)
+                return string.Empty;
+
+            var value = match.Groups[1].Value.Trim();
+
+            int uriEnd = value.IndexOf('>');
+            if (uriEnd >= 0)
+                return value.Substring(0, uriEnd + 1);
+
+            return value;
+        }
+
+        private bool IsIncomingCallInvite(string cseq, string sipData)
+        {
+            if (string.IsNullOrEmpty(cseq) || string.IsNullOrEmpty(sipData))
+                return false;
+
+            return cseq.Contains("INVITE", StringComparison.OrdinalIgnoreCase) &&
+                   sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     public class PacketCaptureService
     {
         private ICaptureDevice? _device;
         private readonly PacketCaptureSettings _settings;
         private readonly ILogger<PacketCaptureService> _logger;
-        private MQTTClient _mqtt;
+        private MQTTClient _mqtt = null!;
 
         private int _totalPacketsReceived;
         private volatile bool _stopping;
@@ -28,12 +119,6 @@ namespace Fetchit.Listenerd
                 SingleReader = true,
                 FullMode = BoundedChannelFullMode.DropOldest
             });
-
-        private record SipPacket(
-            string SourceIp,
-            string DestinationIp,
-            string SipText,
-            int TotalPacketsReceived);
 
         public PacketCaptureService(
             IOptions<PacketCaptureSettings> settings,
@@ -82,13 +167,9 @@ namespace Fetchit.Listenerd
             {
                 await foreach (var sip in _sipQueue.Reader.ReadAllAsync())
                 {
-                    _mqtt.BuildSipMessage(
-                        sip.SourceIp,
-                        sip.DestinationIp,
-                        sip.SipText,
-                        sip.TotalPacketsReceived);
-
-                    await _mqtt.Publ
+                    // The 'sip' object here is an instance of the SipPacket class
+                    // which already contains the parsed CallerName, Number, etc.
+                    await _mqtt.PublishSipAsync(sip);
                 }
             });
         }

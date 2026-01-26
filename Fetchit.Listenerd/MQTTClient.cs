@@ -111,85 +111,77 @@ public class MQTTClient
     }
 
 
-    public Task PublishSipAsync(string sourceIp, string destinationIp, string sipText, int totalPacketsReceived)
+    public async Task PublishSipAsync(Fetchit.Listenerd.SipPacket packet)
     {
         if (_mqttClient == null)
         {
             _logger.LogWarning("MQTT client is not initialized.");
-            return Task.CompletedTask;
+            return;
         }
 
         if (!_mqttClient.IsConnected)
         {
             _logger.LogWarning("MQTT client is not connected.");
-            return Task.CompletedTask;
+            return;
         }
 
         if (!_connected)
         {
             _logger.LogWarning("MQTT client is not connected (internal flag).");
-            return Task.CompletedTask;
+            return;
         }
 
+        // Use the rich properties parsed by the class
+        var payload = new
+        {
+            Source = packet.SourceIp,
+            Destination = packet.DestinationIp,
+            Caller = packet.CallerName,
+            Extension = packet.Number,
+            IsInvite = packet.IsInvite,
+            FromHeader = packet.FromRaw,
+            CSeq = packet.CSeqRaw,
+            Timestamp = DateTime.UtcNow,
+            PacketCount = packet.TotalPacketsReceived
+        };
 
+        string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
 
+        // Log based on invite status
+        if (packet.IsInvite)
+        {
+            _logger.LogInformation(
+                "Incoming INVITE: {Caller} ({Extension}) from {SourceIp} - Packet #{PacketCount}",
+                packet.CallerName,
+                packet.Number,
+                packet.SourceIp,
+                packet.TotalPacketsReceived);
+        }
+        else
+        {
+            _logger.LogDebug(
+                "SIP message from {SourceIp} to {DestinationIp} - Packet #{PacketCount}",
+                packet.SourceIp,
+                packet.DestinationIp,
+                packet.TotalPacketsReceived);
+        }
 
-        // Simulate publishing SIP message to MQTT broker
-        _logger.LogInformation("Published SIP message from {SourceIp} to {DestinationIp} with {TotalPacketsReceived} packets", sourceIp, destinationIp, totalPacketsReceived);
-        return Task.CompletedTask;
+        // Publish to MQTT broker
+        try
+        {
+            var message = new MqttApplicationMessageBuilder()
+                .WithTopic(_mqttConfiguration.TopicPublish)
+                .WithPayload(jsonPayload)
+                .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithRetainFlag(false)
+                .Build();
+
+            await _mqttClient.PublishAsync(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish SIP message to MQTT");
+        }
     }
-    private string GetSipNumber(string sipData, string header)
-    {
-        var match = Regex.Match(
-            sipData,
-            $@"^{header}:\s*.*?<sip:([^@>]+)",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-        return match.Success ? match.Groups[1].Value : "Unknown";
-    }
-
-    private string GetSipDisplayName(string sipData, string header)
-    {
-        if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
-            return string.Empty;
-
-        var match = Regex.Match(
-            sipData,
-            $@"^{Regex.Escape(header)}\s*:\s*""?([^""<]+)""?\s*<sip:",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-        return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
-    }
-
-
-    private string GetSipHeaderRaw(string sipData, string header)
-    {
-        if (string.IsNullOrWhiteSpace(sipData) || string.IsNullOrWhiteSpace(header))
-            return string.Empty;
-
-        var match = Regex.Match(
-            sipData,
-            $@"^{Regex.Escape(header)}\s*:\s*(.+)$",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-        if (!match.Success)
-            return string.Empty;
-
-        var value = match.Groups[1].Value.Trim();
-
-        int uriEnd = value.IndexOf('>');
-        if (uriEnd >= 0)
-            return value.Substring(0, uriEnd + 1);
-
-        return value;
-    }
-
-    public bool IsIncomingCallInvite(string callId, string cseq, string sipData)
-    {
-        if (string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(cseq))
-            return false;
-
-        return cseq?.Contains("INVITE", StringComparison.OrdinalIgnoreCase) == true && sipData.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) == true;
-
-    }
 }
