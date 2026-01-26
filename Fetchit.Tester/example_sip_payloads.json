@@ -1,0 +1,143 @@
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bK14e659c24018B77D;received=100.111.221.66\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=iXiRIDyalP6WdzRg1099B2\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=E8B7DF7A-B7DE67F9\r\nCall-ID: 68078c273c9d2bd3e836c1b773581c3d\r\nCSeq: 5072 SUBSCRIBE\r\nContact: \u003Csip:207.254.83.12:5060;transport=udp\u003E\r\nExpires: 3308\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 29,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "5072 SUBSCRIBE",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bK14e659c24018B77D;received=100.111.221.66\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=iXiRIDyalP6WdzRg1099B2\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=E8B7DF7A-B7DE67F9\r\nCall-ID: 68078c273c9d2bd3e836c1b773581c3d\r\nCSeq: 5072 SUBSCRIBE\r\nContact: \u003Csip:207.254.83.12:5060;transport=udp\u003E\r\nExpires: 3308\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 30,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "5072 SUBSCRIBE",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "INVITE sip:1186@10.0.0.11:5654 SIP/2.0\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nContact: \u003Csip:207.254.83.12:5060;transport=udp\u003E\r\nCSeq: 201 INVITE\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nMax-Forwards: 60\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E\r\nDate: Mon, 26 Jan 2026 18:45:04 GMT\r\nServer: UCaaS PBX v44-1-0x400\r\nAllow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY, PUBLISH, SUBSCRIBE\r\nAllow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer\r\nX-OrigCallID: f7f90f94-7589-123f-70be-005056842248\r\nX-RcvFrom: 67.231.9.142\r\nP-hint: inbound\r\nX-FS-Support: update_display,send_info\r\nSupported: timer\r\nContent-Type: application/sdp\r\nContent-Length: 288\r\n\r\nv=0\r\no=NetSapiens_Nms 1769453104 1769453104197 IN IP4 207.254.83.12\r\ns=SIP Media Capabilities\r\nc=IN IP4 207.254.83.12\r\nt=0 0\r\nm=audio 32868 RTP/AVP 0 18 101\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:18 G729/8000\r\na=fmtp:18 annexb=no\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=ptime:20\r\n",
+    "TotalPacketsReceived": 31,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 INVITE",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": true
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "SIP/2.0 100 Trying\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCSeq: 201 INVITE\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAccept-Language: en\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 32,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 INVITE",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "SIP/2.0 180 Ringing\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCSeq: 201 INVITE\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAllow-Events: conference,talk,hold\r\nAccept-Language: en\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 33,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 INVITE",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "REGISTER sip:SchultzTechnologyPhoneAccount.23917.service:5060 SIP/2.0\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bKa0e27ffcF6CC64B9\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=FC0522A8-5B223A38\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E\r\nCSeq: 13237 REGISTER\r\nCall-ID: e3e83071f8d3cfcbb39baf5089581c3d\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E;methods=\u0022INVITE,ACK,BYE,CANCEL,OPTIONS,INFO,MESSAGE,SUBSCRIBE,NOTIFY,PRACK,UPDATE,REFER\u0022\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAccept-Language: en\r\nProxy-Authorization: Digest username=\u00221186\u0022, realm=\u0022SchultzTechnologyPhoneAccount.23917.service\u0022, nonce=\u00223dc77b9db384753a79f97105e9da6c0c\u0022, uri=\u0022sip:SchultzTechnologyPhoneAccount.23917.service:5060\u0022, response=\u0022922e794aff913a9c686115fa2836032d\u0022, algorithm=MD5\r\nMax-Forwards: 70\r\nExpires: 3600\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 34,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "13237 REGISTER",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "SIP/2.0 407 Proxy Authentication Required\r\nProxy-Authenticate: Digest realm=\u0022SchultzTechnologyPhoneAccount.23917.service\u0022, nonce=\u002281b40a724bacf9ae92149cd1b2b23ed1\u0022\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bKa0e27ffcF6CC64B9;received=100.111.221.66\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=FC0522A8-5B223A38\r\nCall-ID: e3e83071f8d3cfcbb39baf5089581c3d\r\nCSeq: 13237 REGISTER\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 35,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "13237 REGISTER",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "REGISTER sip:SchultzTechnologyPhoneAccount.23917.service:5060 SIP/2.0\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bKa1ebdfd0E5B638D1\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=FC0522A8-5B223A38\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E\r\nCSeq: 13238 REGISTER\r\nCall-ID: e3e83071f8d3cfcbb39baf5089581c3d\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E;methods=\u0022INVITE,ACK,BYE,CANCEL,OPTIONS,INFO,MESSAGE,SUBSCRIBE,NOTIFY,PRACK,UPDATE,REFER\u0022\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAccept-Language: en\r\nProxy-Authorization: Digest username=\u00221186\u0022, realm=\u0022SchultzTechnologyPhoneAccount.23917.service\u0022, nonce=\u002281b40a724bacf9ae92149cd1b2b23ed1\u0022, uri=\u0022sip:SchultzTechnologyPhoneAccount.23917.service:5060\u0022, response=\u00225bf4863a84eac659a0831d2b46967b4a\u0022, algorithm=MD5\r\nMax-Forwards: 70\r\nExpires: 3600\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 36,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "13238 REGISTER",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP 10.0.0.11:5654;branch=z9hG4bKa1ebdfd0E5B638D1;received=100.111.221.66\r\nTo: \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E\r\nFrom: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=FC0522A8-5B223A38\r\nCall-ID: e3e83071f8d3cfcbb39baf5089581c3d\r\nCSeq: 13238 REGISTER\r\nContact: \u003Csip:1186@100.111.221.66:5654\u003E;methods=\u0022INVITE,ACK,BYE,CANCEL,OPTIONS,INFO,MESSAGE,SUBSCRIBE,NOTIFY,PRACK,UPDATE,REFER\u0022;expires=50\r\nExpires: 50\r\nServer: UCaaS PBX v44-1-0x400\r\nAllow: INVITE,ACK,CANCEL,BYE,INFO,OPTIONS,UPDATE,REFER,SUBSCRIBE\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 37,
+    "FromRaw": "\u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "13238 REGISTER",
+    "Number": "1186",
+    "CallerName": "Joe Morris",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "CANCEL sip:1186@100.111.221.66:5654 SIP/2.0\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nCSeq: 201 CANCEL\r\nMax-Forwards: 60\r\nReason: SIP ;cause=487 ;text=\u0022Disconnected by Caller\u0022\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 38,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 CANCEL",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCSeq: 201 CANCEL\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAccept-Language: en\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 39,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 CANCEL",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
+{
+    "SourceIp": "10.0.0.11",
+    "DestinationIp": "207.254.83.12",
+    "RawSipText": "SIP/2.0 487 Request Cancelled\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCSeq: 201 INVITE\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nContact: \u003Csip:1186@10.0.0.11:5654\u003E\r\nUser-Agent: PolyEdge-Edge_E350-UA/8.3.1.0614\r\nAccept-Language: en\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 40,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 INVITE",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
+{
+    "SourceIp": "207.254.83.12",
+    "DestinationIp": "10.0.0.11",
+    "RawSipText": "ACK sip:1186@10.0.0.11:5654 SIP/2.0\r\nVia: SIP/2.0/UDP 207.254.83.12:5060;branch=z9hG4bK2lkMFAYi1OmVdjH4B975C0\r\nFrom: \u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=2lkMFAYi1OmVdjH4B975C0\r\nTo: \u0022Joe Morris\u0022 \u003Csip:1186@SchultzTechnologyPhoneAccount.23917.service\u003E;tag=B7745EE1-E0EE176A\r\nCall-ID: 20260126184504019309-36249a3b1c60c6cc2f37b9a10966fd99\r\nCSeq: 201 ACK\r\nMax-Forwards: 60\r\nContent-Length: 0\r\n\r\n",
+    "TotalPacketsReceived": 41,
+    "FromRaw": "\u0022JOSEPH MORRIS\u0022 \u003Csip:19047186662@SchultzTechnologyPhoneAccount.23917.service\u003E",
+    "CSeqRaw": "201 ACK",
+    "Number": "19047186662",
+    "CallerName": "JOSEPH MORRIS",
+    "IsInvite": false
+}
