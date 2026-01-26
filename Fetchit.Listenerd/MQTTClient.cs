@@ -33,8 +33,9 @@ public class MQTTClient
                 .OrderByDescending(c => c.UpdatedAt)
                 .FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException("No MQTT configuration found.");
-
-            _connectionSecret = System.Text.Json.JsonSerializer.Deserialize<ConnectionSecretDto>(_mqttConfiguration.ConnectionSecret)
+            
+            var decodedSecret = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(_mqttConfiguration.ConnectionSecret));
+            _connectionSecret = System.Text.Json.JsonSerializer.Deserialize<ConnectionSecretDto>(decodedSecret)
                 ?? throw new InvalidOperationException("Invalid connection secret.");
         }
         catch (System.Exception ex)
