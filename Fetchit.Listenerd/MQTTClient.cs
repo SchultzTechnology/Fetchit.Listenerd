@@ -145,7 +145,8 @@ public class MQTTClient
 
     public async Task PublishSipAsync(SipPacket packet)
     {
-        _logger.LogInformation("Incoming SIP packet to publish via MQTT {packet}", packet);
+        var jsonPayloadPacket = System.Text.Json.JsonSerializer.Serialize(packet);
+        _logger.LogInformation("Incoming SIP packet to publish via MQTT {packet}", jsonPayloadPacket);
         if (!EnsureConnected())
         {
             _logger.LogWarning("Cannot publish SIP message - MQTT client not connected");
