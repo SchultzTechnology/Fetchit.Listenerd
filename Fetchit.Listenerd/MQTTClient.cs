@@ -33,7 +33,7 @@ public class MQTTClient
                 .OrderByDescending(c => c.UpdatedAt)
                 .FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException("No MQTT configuration found.");
-            
+
             var decodedSecret = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(_mqttConfiguration.ConnectionSecret));
             _connectionSecret = System.Text.Json.JsonSerializer.Deserialize<ConnectionSecretDto>(decodedSecret)
                 ?? throw new InvalidOperationException("Invalid connection secret.");
@@ -111,27 +111,25 @@ public class MQTTClient
         }
     }
 
-
-    public async Task PublishSipAsync(Fetchit.Listenerd.SipPacket packet)
+    private async Task<bool> EnsureConnectedAsync()
     {
-        if (_mqttClient == null)
+        if (_mqttClient != null && _mqttClient.IsConnected)
         {
-            _logger.LogWarning("MQTT client is not initialized.");
-            return;
-        }
-
-        if (!_mqttClient.IsConnected)
-        {
-            _logger.LogWarning("MQTT client is not connected.");
-            return;
+            return true;
         }
 
         if (!_connected)
         {
-            _logger.LogWarning("MQTT client is not connected (internal flag).");
-            return;
+            _logger.LogWarning("MQTT client not initialized. Attempting to initialize...");
+            await InitializeMqttBrokerAsync();
         }
 
+        // Return the state after the attempt
+        return _mqttClient?.IsConnected ?? false;
+    }
+
+    public async Task PublishSipAsync(Fetchit.Listenerd.SipPacket packet)
+    {
         // Use the rich properties parsed by the class
         var payload = new
         {
