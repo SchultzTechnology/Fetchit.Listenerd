@@ -145,8 +145,6 @@ public class MQTTClient
 
     public async Task PublishSipAsync(SipPacket packet)
     {
-        var jsonPayloadPacket = System.Text.Json.JsonSerializer.Serialize(packet);
-        _logger.LogInformation("Incoming SIP packet to publish via MQTT {packet}", jsonPayloadPacket);
         if (!EnsureConnected())
         {
             _logger.LogWarning("Cannot publish SIP message - MQTT client not connected");
@@ -177,12 +175,26 @@ public class MQTTClient
         // Log based on invite status
         if (packet.IsInvite)
         {
-            _logger.LogInformation(
-                "Incoming INVITE: {Caller} ({Extension}) from {SourceIp} - Packet #{PacketCount}",
-                packet.CallerName,
-                packet.Number,
-                packet.SourceIp,
-                packet.TotalPacketsReceived);
+            // Publish to MQTT broker
+            try
+            {
+                var message = new MqttApplicationMessageBuilder()
+                    .WithTopic(_mqttConfiguration.TopicPublish)
+                    .WithPayload(jsonPayload)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithRetainFlag(false)
+                    .Build();
+
+                _logger.LogInformation("Publishing SIP message to MQTT topic {Topic}", _mqttConfiguration.TopicPublish);
+                _logger.LogDebug("MQTT Payload: {Payload}", jsonPayload);
+
+                await _mqttClient.PublishAsync(message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish SIP message to MQTT");
+            }
+
         }
         else
         {
@@ -192,26 +204,5 @@ public class MQTTClient
                 packet.DestinationIp,
                 packet.TotalPacketsReceived);
         }
-
-        // Publish to MQTT broker
-        try
-        {
-            var message = new MqttApplicationMessageBuilder()
-                .WithTopic(_mqttConfiguration.TopicPublish)
-                .WithPayload(jsonPayload)
-                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithRetainFlag(false)
-                .Build();
-
-            _logger.LogInformation("Publishing SIP message to MQTT topic {Topic}", _mqttConfiguration.TopicPublish);
-            _logger.LogDebug("MQTT Payload: {Payload}", jsonPayload);
-
-            await _mqttClient.PublishAsync(message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to publish SIP message to MQTT");
-        }
     }
-
 }
