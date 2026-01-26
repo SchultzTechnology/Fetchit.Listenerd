@@ -21,7 +21,7 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await _mqtt.LoadMqttSettingsAsync();
-        await _mqtt.InitializeMqttBrokerAsync();
+        _mqtt.InitializeMqttBroker();
         _captureService.AssignMqttClient(_mqtt);
         _captureService.StartSipWorker();
         _captureService.InitializeDevice();

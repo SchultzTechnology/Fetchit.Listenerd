@@ -10,10 +10,10 @@ public class MQTTClient
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MQTTClient> _logger;
-    private MqttClientOptions _mqttOptions;
-    private IMqttClient _mqttClient;
-    private MqttConfiguration _mqttConfiguration;
-    private ConnectionSecretDto _connectionSecret;
+    private MqttClientOptions? _mqttOptions;
+    private IMqttClient? _mqttClient;
+    private MqttConfiguration? _mqttConfiguration;
+    private ConnectionSecretDto? _connectionSecret;
     private bool _connected;
 
     public MQTTClient(ILogger<MQTTClient> logger, IServiceProvider serviceProvider)
@@ -45,10 +45,16 @@ public class MQTTClient
         }
     }
 
-    public async Task InitializeMqttBrokerAsync()
+    public async Task InitializeMqttBroker()
     {
         try
         {
+            if (_connectionSecret == null || _mqttConfiguration == null)
+            {
+                _logger.LogError("Cannot initialize MQTT broker - configuration is null. Call LoadMqttSettingsAsync first.");
+                return;
+            }
+
             var _clientId = "FetchitListenerdClient_" + _connectionSecret.ClientId;
 
             _logger.LogInformation("Initializing MQTT client");
@@ -68,7 +74,10 @@ public class MQTTClient
             {
                 _mqttOptions = new MqttClientOptionsBuilder()
                     .WithClientId(_clientId)
-                    .WithWebSocketServer(_connectionSecret.Broker)
+                    .WithWebSocketServer(options =>
+                    {
+                        options.WithUri(_connectionSecret.Broker);
+                    })
                     .WithCredentials(_connectionSecret.UserName, _connectionSecret.Password)
                     .WithCleanSession()
                     .Build();
@@ -83,10 +92,11 @@ public class MQTTClient
                     .Build();
             }
 
-            _mqttClient.ConnectedAsync += async e =>
+            _mqttClient.ConnectedAsync += e =>
             {
                 _connected = true;
                 _logger.LogInformation("MQTT Connected (v3.1.1).");
+                return Task.CompletedTask;
             };
 
             _mqttClient.DisconnectedAsync += async e =>
@@ -104,6 +114,11 @@ public class MQTTClient
                     _logger.LogError(ex, "MQTT Connection error");
                 }
             };
+
+            // Actually connect to the MQTT broker
+            _logger.LogInformation("Connecting to MQTT broker...");
+            await _mqttClient.ConnectAsync(_mqttOptions);
+            _logger.LogInformation("MQTT connection initiated");
         }
         catch (Exception ex)
         {
@@ -111,7 +126,7 @@ public class MQTTClient
         }
     }
 
-    private async Task<bool> EnsureConnectedAsync()
+    private bool EnsureConnected()
     {
         if (_mqttClient != null && _mqttClient.IsConnected)
         {
@@ -120,16 +135,26 @@ public class MQTTClient
 
         if (!_connected)
         {
-            _logger.LogWarning("MQTT client not initialized. Attempting to initialize...");
-            await InitializeMqttBrokerAsync();
+            _logger.LogWarning("MQTT client not connected");
         }
 
-        // Return the state after the attempt
-        return _mqttClient?.IsConnected ?? false;
+        return false;
     }
 
     public async Task PublishSipAsync(Fetchit.Listenerd.SipPacket packet)
     {
+        if (!EnsureConnected())
+        {
+            _logger.LogWarning("Cannot publish SIP message - MQTT client not connected");
+            return;
+        }
+
+        if (_mqttConfiguration == null || _mqttClient == null)
+        {
+            _logger.LogWarning("Cannot publish SIP message - MQTT configuration is null");
+            return;
+        }
+
         // Use the rich properties parsed by the class
         var payload = new
         {
