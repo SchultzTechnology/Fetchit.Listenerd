@@ -7,12 +7,19 @@ echo "  Fetchit.Listenerd Deployment Script"
 echo "=========================================="
 echo ""
 
-cd ~
+# Get the actual user's home directory (not root's)
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo ~$SUDO_USER)
+else
+    USER_HOME=$HOME
+fi
+
+cd "$USER_HOME"
 
 REPO_URL="https://github.com/SchultzTechnology/Fetchit.Listenerd.git"
 
 # Ensure script is run as root
-if ["$EUID" -ne 0 ]; then
+if [ "$EUID" -ne 0 ]; then
   echo "❌ Please run this script as root (use sudo)"
   exit 1
 fi
