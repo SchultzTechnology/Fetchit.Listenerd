@@ -10,7 +10,7 @@ echo ""
 # Variables
 #--------------------------------------------
 REPO_URL="https://github.com/SchultzTechnology/Fetchit.Listenerd.git"
-INSTALL_DIR="~"
+INSTALL_DIR=~
 
 #--------------------------------------------
 # Ensure script is run as root
