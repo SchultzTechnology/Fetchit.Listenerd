@@ -32,21 +32,15 @@ fi
 #--------------------------------------------
 # Clone or update repository
 #--------------------------------------------
-if [ -d "${INSTALL_DIR}" ]; then
-    echo "Directory ${INSTALL_DIR} already exists."
-    read -p "Do you want to remove it and re-clone? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Removing existing directory..."
-        rm -rf ${INSTALL_DIR}
-    else
-        echo "Aborting deployment."
-        exit 1
-    fi
-fi
-
-echo "Cloning repository from ${REPO_URL}..."
-git clone ${REPO_URL} ${INSTALL_DIR}
+if [ -d "${INSTALL_DIR}/.git" ]; then
+    echo "Repository already exists. Pulling latest changes..."
+    cd ${INSTALL_DIR}
+    git pull
+    cd -
+else
+    echo "Cloning repository from ${REPO_URL}..."
+    git clone ${REPO_URL} ${INSTALL_DIR}
+f    
 
 #--------------------------------------------
 # Navigate to repository and run start.sh
