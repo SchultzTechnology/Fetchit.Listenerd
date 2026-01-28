@@ -35,7 +35,8 @@ fi
 git clone $REPO_URL --depth 1 || {
     echo "Repository already exists. Pulling latest changes..."
     cd Fetchit.Listenerd
-    git pull origin main
+    git fetch --all
+    git reset --hard origin/main        
 }
 
 # Navigate to repository and run start.sh
