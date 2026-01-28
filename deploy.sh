@@ -32,15 +32,15 @@ if ! command -v git &> /dev/null; then
 fi
 
 # Clone or update repository
-git clone $REPO_URL --depth 1 || {
+if [ -d "Fetchit.Listenerd" ]; then
     echo "Repository already exists. Pulling latest changes..."
     cd Fetchit.Listenerd
     git fetch --all
-    git reset --hard origin/main        
-}
-
-# Navigate to repository and run start.sh
-cd Fetchit.Listenerd
+    git reset --hard origin/main
+else
+    git clone $REPO_URL --depth 1
+    cd Fetchit.Listenerd
+fi
 echo "Running installation script..."
 chmod +x start.sh
 ./start.sh
