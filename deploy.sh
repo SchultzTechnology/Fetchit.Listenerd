@@ -7,6 +7,8 @@ echo "  Fetchit.Listenerd Deployment Script"
 echo "=========================================="
 echo ""
 
+cd ~
+
 REPO_URL="https://github.com/SchultzTechnology/Fetchit.Listenerd.git"
 
 # Ensure script is run as root
