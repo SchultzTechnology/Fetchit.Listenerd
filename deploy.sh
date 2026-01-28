@@ -40,7 +40,7 @@ if [ -d "${INSTALL_DIR}/.git" ]; then
 else
     echo "Cloning repository from ${REPO_URL}..."
     git clone ${REPO_URL} ${INSTALL_DIR}
-f    
+fi
 
 #--------------------------------------------
 # Navigate to repository and run start.sh
