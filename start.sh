@@ -16,6 +16,31 @@ SUPERVISOR_CONF="/etc/supervisor/conf.d/fetchit.conf"
 PUBLISH_PATH=${APP_ROOT}/fetchit
 
 #--------------------------------------------
+# Detect OS and Distribution
+#--------------------------------------------
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+        OS_VERSION=$VERSION_ID
+        OS_PRETTY=$PRETTY_NAME
+    elif [ -f /etc/debian_version ]; then
+        OS="debian"
+        OS_VERSION=$(cat /etc/debian_version)
+        OS_PRETTY="Debian $OS_VERSION"
+    elif [ -f /etc/redhat-release ]; then
+        OS="rhel"
+        OS_VERSION=$(cat /etc/redhat-release)
+        OS_PRETTY=$OS_VERSION
+    else
+        OS="unknown"
+        OS_PRETTY="Unknown OS"
+    fi
+    
+    echo "Detected OS: $OS_PRETTY"
+}
+
+#--------------------------------------------
 # Ensure script is run as root
 #--------------------------------------------
 if [ "$EUID" -ne 0 ]; then
@@ -23,14 +48,82 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+detect_os
+
+#--------------------------------------------
+# Install system dependencies based on OS
+#--------------------------------------------
 echo "Installing system dependencies..."
-apt-get update
-apt-get install -y \
-  wget \
-  curl \
-  libpcap0.8t64 \
-  supervisor \
-  iptables-persistent
+
+case $OS in
+    ubuntu|debian|raspbian)
+        apt-get update
+        
+        # Determine correct libpcap package name
+        LIBPCAP_PKG="libpcap0.8"
+        if apt-cache show libpcap0.8t64 &>/dev/null; then
+            LIBPCAP_PKG="libpcap0.8t64"
+        fi
+        
+        apt-get install -y \
+          wget \
+          curl \
+          $LIBPCAP_PKG \
+          supervisor \
+          iptables-persistent
+        ;;
+        
+    fedora|rhel|centos|rocky|almalinux)
+        if command -v dnf &> /dev/null; then
+            PKG_MGR="dnf"
+        else
+            PKG_MGR="yum"
+        fi
+        
+        $PKG_MGR install -y \
+          wget \
+          curl \
+          libpcap \
+          supervisor \
+          iptables-services
+        
+        # Enable iptables service
+        systemctl enable iptables
+        ;;
+        
+    arch|manjaro)
+        pacman -Sy --noconfirm \
+          wget \
+          curl \
+          libpcap \
+          supervisor \
+          iptables
+        ;;
+        
+    alpine)
+        apk update
+        apk add --no-cache \
+          wget \
+          curl \
+          libpcap \
+          supervisor \
+          iptables
+        ;;
+        
+    *)
+        echo "⚠️  Unsupported OS: $OS_PRETTY"
+        echo "Please install the following packages manually:"
+        echo "  - wget, curl"
+        echo "  - libpcap (or libpcap0.8)"
+        echo "  - supervisor"
+        echo "  - iptables"
+        read -p "Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+        ;;
+esac
 
 # Check if dotnet exists and is working properly
 DOTNET_WORKS=false
@@ -131,8 +224,31 @@ dotnet publish "Fetchit.WebPage/Fetchit.WebPage.csproj" \
 mkdir -p ${APP_ROOT}/data
 
 echo "Configuring firewall..."
-iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
-netfilter-persistent save
+case $OS in
+    ubuntu|debian|raspbian)
+        iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+        if command -v netfilter-persistent &> /dev/null; then
+            netfilter-persistent save
+        else
+            echo "⚠️  netfilter-persistent not available, firewall rules are temporary"
+        fi
+        ;;
+        
+    fedora|rhel|centos|rocky|almalinux)
+        if command -v firewall-cmd &> /dev/null; then
+            firewall-cmd --permanent --add-port=8080/tcp
+            firewall-cmd --reload
+        else
+            iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+            service iptables save
+        fi
+        ;;
+        
+    *)
+        iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+        echo "⚠️  Firewall configuration may need manual persistence for your OS"
+        ;;
+esac
 
 echo "Creating Supervisor configuration..."
 
