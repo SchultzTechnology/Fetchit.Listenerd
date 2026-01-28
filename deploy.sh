@@ -10,7 +10,7 @@ echo ""
 # Variables
 #--------------------------------------------
 REPO_URL="https://github.com/SchultzTechnology/Fetchit.Listenerd.git"
-INSTALL_DIR=~
+INSTALL_DIR=~/Fetchit.Listenerd
 
 #--------------------------------------------
 # Ensure script is run as root
@@ -32,11 +32,10 @@ fi
 #--------------------------------------------
 # Clone or update repository
 #--------------------------------------------
-if [ -d "${INSTALL_DIR}/.git" ]; then
+if [ -d "${INSTALL_DIR}" ]; then
     echo "Repository already exists. Pulling latest changes..."
     cd ${INSTALL_DIR}
     git pull
-    cd -
 else
     echo "Cloning repository from ${REPO_URL}..."
     git clone ${REPO_URL} ${INSTALL_DIR}
