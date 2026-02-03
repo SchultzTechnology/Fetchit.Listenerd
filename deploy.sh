@@ -7,16 +7,8 @@ echo "  Fetchit.Listenerd Deployment Script"
 echo "=========================================="
 echo ""
 
-# Get the actual user's home directory (not root's)
-if [ -n "$SUDO_USER" ]; then
-    USER_HOME=$(eval echo ~$SUDO_USER)
-else
-    USER_HOME=$HOME
-fi
-
-cd "$USER_HOME"
-
 REPO_URL="https://github.com/SchultzTechnology/Fetchit.Listenerd.git"
+INSTALL_DIR="/tmp/fetchit-install"
 
 # Ensure script is run as root
 if [ "$EUID" -ne 0 ]; then
@@ -27,22 +19,33 @@ fi
 # Install git if not present
 if ! command -v git &> /dev/null; then
     echo "Installing git..."
-    apt-get update
-    apt-get install -y git
+    if command -v apt-get &> /dev/null; then
+        apt-get update
+        apt-get install -y git
+    elif command -v dnf &> /dev/null; then
+        dnf install -y git
+    elif command -v yum &> /dev/null; then
+        yum install -y git
+    elif command -v pacman &> /dev/null; then
+        pacman -Sy --noconfirm git
+    else
+        echo "❌ Unable to install git automatically. Please install git and try again."
+        exit 1
+    fi
 fi
 
-# Clone or update repository
-if [ -d "Fetchit.Listenerd" ]; then
-    echo "Repository already exists. Pulling latest changes..."
-    cd Fetchit.Listenerd
-    git fetch --all
-    git reset --hard origin/main
-else
-    git clone $REPO_URL --depth 1
-    cd Fetchit.Listenerd
-fi
+# Clone repository to temporary location
+echo "Downloading installation script..."
+rm -rf ${INSTALL_DIR}
+git clone $REPO_URL ${INSTALL_DIR} --depth 1
+
 echo "Running installation script..."
+cd ${INSTALL_DIR}
 chmod +x start.sh
 ./start.sh
+
+# Clean up
+cd /
+rm -rf ${INSTALL_DIR}
 
 echo "✅ Deployment completed successfully!"

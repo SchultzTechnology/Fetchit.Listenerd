@@ -1,0 +1,105 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      
+      - name: Restore dependencies
+        run: |
+          dotnet restore Fetchit.Listenerd/Fetchit.Listenerd.csproj
+          dotnet restore Fetchit.WebPage/Fetchit.WebPage.csproj
+      
+      - name: Build Listenerd (ARM64)
+        run: |
+          dotnet publish Fetchit.Listenerd/Fetchit.Listenerd.csproj \
+            --configuration Release \
+            --runtime linux-arm64 \
+            --self-contained \
+            --output ./publish/listenerd \
+            /p:PublishSingleFile=true \
+            /p:PublishTrimmed=true \
+            /p:DebugType=None \
+            /p:DebugSymbols=false
+      
+      - name: Build WebPage (ARM64)
+        run: |
+          dotnet publish Fetchit.WebPage/Fetchit.WebPage.csproj \
+            --configuration Release \
+            --runtime linux-arm64 \
+            --self-contained \
+            --output ./publish/webpage \
+            /p:PublishSingleFile=true \
+            /p:PublishTrimmed=true \
+            /p:DebugType=None \
+            /p:DebugSymbols=false
+      
+      - name: Create release package
+        run: |
+          cd publish
+          zip -r ../fetchit-linux-arm64.zip listenerd webpage
+          cd ..
+          ls -lh fetchit-linux-arm64.zip
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetchit-linux-arm64
+          path: fetchit-linux-arm64.zip
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: fetchit-linux-arm64.zip
+          body: |
+            ## Fetchit Listenerd Release
+            
+            Self-contained ARM64 build for Raspberry Pi and other ARM64 Linux systems.
+            
+            ### Installation
+            
+            ```bash
+            sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SchultzTechnology/Fetchit.Listenerd/main/deploy.sh)"
+            ```
+            
+            Or manually:
+            
+            ```bash
+            # Download and extract
+            wget https://github.com/SchultzTechnology/Fetchit.Listenerd/releases/download/${{ github.ref_name }}/fetchit-linux-arm64.zip
+            unzip fetchit-linux-arm64.zip -d /app/fetchit
+            
+            # Set executable permissions
+            chmod +x /app/fetchit/listenerd/Fetchit.Listenerd
+            chmod +x /app/fetchit/webpage/Fetchit.WebPage
+            
+            # Run installation script
+            sudo ./start.sh
+            ```
+            
+            ### Requirements
+            - ARM64 Linux system (Raspberry Pi 3/4/5 with 64-bit OS, etc.)
+            - libpcap library installed
+            - Supervisor for process management
+            
+            ### What's Included
+            - Fetchit.Listenerd: SIP packet capture worker service
+            - Fetchit.WebPage: Configuration web interface (port 8080)
+            - Self-contained .NET runtime (no .NET SDK installation required)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
