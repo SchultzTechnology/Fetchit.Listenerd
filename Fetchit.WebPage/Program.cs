@@ -53,7 +53,7 @@ using (var scope = app.Services.CreateScope())
                 dbContext.Users.Add(new User
                 {
                     Username = "admin",
-                    PasswordHash = HashPassword("Welcome123!")
+                    PasswordHash = HashPassword("admin!")
                 });
                 dbContext.SaveChanges();
                 logger.LogInformation("Default admin user created successfully.");

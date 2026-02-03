@@ -34,6 +34,23 @@ This will:
 
 After deployment, access the web interface at `http://localhost:8080`
 
+## Initial Setup
+
+After deployment, configure the MQTT connection:
+
+1. **Access Web Interface**: Navigate to `http://your-pi-ip:8080`
+2. **Login**: Use default credentials
+   - Username: `admin`
+   - Password: `admin!`
+3. **Configure MQTT**: Enter your MQTT broker details
+   - Broker URL
+   - Port
+   - Credentials
+   - Topics
+4. **Save Configuration**: The Listenerd service will automatically detect the configuration and start monitoring
+
+**Note**: The `fetchit-listenerd` service will wait for MQTT configuration before starting packet capture. This is normal behavior - check logs with `sudo tail -f /var/log/supervisor/listenerd.out.log` to see the "Waiting for MQTT configuration" message.
+
 ## System Requirements
 
 - **Operating System**: ARM64 Linux (Raspberry Pi OS 64-bit, Ubuntu ARM64, etc.)

@@ -20,19 +20,57 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await _mqtt.LoadMqttSettingsAsync();
-        _mqtt.InitializeMqttBroker();
-        _captureService.AssignMqttClient(_mqtt);
-        _captureService.StartSipWorker();
-        _captureService.InitializeDevice();
-        _captureService.ConfigureDevice();
+        _logger.LogInformation("Fetchit Listenerd Worker starting...");
         
+        // Wait for MQTT configuration to be available
+        bool configLoaded = false;
+        while (!configLoaded && !stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await _mqtt.LoadMqttSettingsAsync();
+                configLoaded = true;
+                _logger.LogInformation("MQTT configuration loaded successfully");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("Waiting for MQTT configuration to be set up via web interface...");
+                _logger.LogDebug(ex, "Configuration not found");
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading MQTT configuration, retrying in 30 seconds...");
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+        }
 
-        _logger.LogInformation("Worker started successfully");
+        if (stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Worker cancelled before configuration was loaded");
+            return;
+        }
 
+        // Initialize MQTT and packet capture
+        try
+        {
+            await _mqtt.InitializeMqttBroker();
+            _captureService.AssignMqttClient(_mqtt);
+            _captureService.StartSipWorker();
+            _captureService.InitializeDevice();
+            _captureService.ConfigureDevice();
+            
+            _logger.LogInformation("Worker started successfully - monitoring SIP traffic");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize services");
+            throw;
+        }
+
+        // Main loop - heartbeat
         while (!stoppingToken.IsCancellationRequested)
         {
-            // Heartbeat every 5 minutes instead of every second
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation("Worker heartbeat at: {time}", DateTimeOffset.Now);
