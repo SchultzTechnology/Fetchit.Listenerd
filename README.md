@@ -41,7 +41,7 @@ After deployment, configure the MQTT connection:
 1. **Access Web Interface**: Navigate to `http://your-pi-ip:8080`
 2. **Login**: Use default credentials
    - Username: `admin`
-   - Password: `admin!`
+   - Password: `Welcome123!`
 3. **Configure MQTT**: Enter your MQTT broker details
    - Broker URL
    - Port
