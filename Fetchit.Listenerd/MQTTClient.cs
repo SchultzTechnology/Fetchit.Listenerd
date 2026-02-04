@@ -188,6 +188,8 @@ public class MQTTClient
                 .Build();
 
             await _mqttClient.PublishAsync(message);
+            
+            // Log only after successful publish
             _logger.LogInformation("Incoming call published: {CallerID} ({Number})", packet.CallerName, packet.Number);
         }
         catch (Exception ex)

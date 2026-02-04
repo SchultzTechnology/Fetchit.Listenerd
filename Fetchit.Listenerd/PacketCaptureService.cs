@@ -106,15 +106,15 @@ namespace Fetchit.Listenerd
             // 2. Direction Check: Is the Request-URI (the first line) targeting our Destination IP?
             // Incoming: "INVITE sip:1186@10.0.0.11:5654 SIP/2.0" -> contains 10.0.0.11
             // Outgoing: "INVITE sip:9047186662@PBX.service:5060 SIP/2.0" -> contains PBX address
-            string firstLine = RawSipText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            int firstLineEnd = RawSipText.IndexOfAny(new[] { '\r', '\n' });
+            string firstLine = firstLineEnd > 0 ? RawSipText.Substring(0, firstLineEnd) : RawSipText;
             bool isTargetingLocalIp = firstLine.Contains(DestinationIp);
 
             // 3. Source Identity: PBX vs Phone
             // A PBX identifies itself with the "Server" header. 
             // A phone (User-Agent) usually does not include a Server header in an INVITE.
-            // Check for Server header after line breaks or at the start of the message
-            bool hasServerHeader = RawSipText.Contains("\nServer:", StringComparison.OrdinalIgnoreCase) ||
-                                   RawSipText.Contains("\r\nServer:", StringComparison.OrdinalIgnoreCase);
+            // Use regex to ensure Server: is at the start of a header line (not embedded in another header's value)
+            bool hasServerHeader = Regex.IsMatch(RawSipText, @"^Server\s*:", RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
             return isTargetingLocalIp && hasServerHeader;
         }
