@@ -112,7 +112,9 @@ namespace Fetchit.Listenerd
             // 3. Source Identity: PBX vs Phone
             // A PBX identifies itself with the "Server" header. 
             // A phone (User-Agent) usually does not include a Server header in an INVITE.
-            bool hasServerHeader = RawSipText.Contains("\nServer:", StringComparison.OrdinalIgnoreCase);
+            // Check for Server header after line breaks or at the start of the message
+            bool hasServerHeader = RawSipText.Contains("\nServer:", StringComparison.OrdinalIgnoreCase) ||
+                                   RawSipText.Contains("\r\nServer:", StringComparison.OrdinalIgnoreCase);
 
             return isTargetingLocalIp && hasServerHeader;
         }

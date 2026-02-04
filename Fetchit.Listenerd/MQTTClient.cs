@@ -184,6 +184,7 @@ public class MQTTClient
                 .WithTopic(_mqttConfiguration.TopicPublish)
                 .WithPayload(jsonPayload)
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithRetainFlag(false)
                 .Build();
 
             await _mqttClient.PublishAsync(message);
