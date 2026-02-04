@@ -17,7 +17,8 @@ namespace Fetchit.Listenerd
     {
         // Static fields for performance optimization
         private static readonly char[] LineBreakChars = new[] { '\r', '\n' };
-        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:", RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:", 
+            RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public string SourceIp { get; }
         public string DestinationIp { get; }
@@ -111,7 +112,7 @@ namespace Fetchit.Listenerd
             // Incoming: "INVITE sip:1186@10.0.0.11:5654 SIP/2.0" -> contains 10.0.0.11
             // Outgoing: "INVITE sip:9047186662@PBX.service:5060 SIP/2.0" -> contains PBX address
             int firstLineEnd = RawSipText.IndexOfAny(LineBreakChars);
-            string firstLine = firstLineEnd > 0 ? RawSipText.Substring(0, firstLineEnd) : RawSipText;
+            string firstLine = firstLineEnd >= 0 ? RawSipText.Substring(0, firstLineEnd) : RawSipText;
             bool isTargetingLocalIp = firstLine.Contains(DestinationIp);
 
             // 3. Source Identity: PBX vs Phone
