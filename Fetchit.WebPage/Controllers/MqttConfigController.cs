@@ -60,8 +60,8 @@ public class MqttConfigController : Controller
             model = new MqttSettingsViewModel
             {
                 BrokerPort = 443,
-                TopicSubscribe = "",
-                TopicPublish = ""
+                TopicSubscribe = "none/none",
+                TopicPublish = "lookupservice/calls/incoming"
             };
             ViewData["IsEdit"] = false;
         }
