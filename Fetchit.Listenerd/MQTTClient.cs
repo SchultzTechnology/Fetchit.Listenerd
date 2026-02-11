@@ -145,8 +145,11 @@ public class MQTTClient
 
     public async Task PublishSipAsync(SipPacket packet)
     {
-        var jsonPayloadPacket = System.Text.Json.JsonSerializer.Serialize(packet);
-        _logger.LogInformation("Incoming SIP packet to publish via MQTT {packet}", jsonPayloadPacket);
+        // If EvaluateIsIncomingInvite() returned false, we skip publishing entirely.
+        if (!packet.IsInvite)
+        {
+            return;
+        }
 
         if (!EnsureConnected())
         {
@@ -175,37 +178,23 @@ public class MQTTClient
 
         string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
 
-        // Log based on invite status
-        if (packet.IsInvite)
+        try
         {
-            // Publish to MQTT broker
-            try
-            {
-                var message = new MqttApplicationMessageBuilder()
-                    .WithTopic(_mqttConfiguration.TopicPublish)
-                    .WithPayload(jsonPayload)
-                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                    .WithRetainFlag(false)
-                    .Build();
+            var message = new MqttApplicationMessageBuilder()
+                .WithTopic(_mqttConfiguration.TopicPublish)
+                .WithPayload(jsonPayload)
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithRetainFlag(false)
+                .Build();
 
-                _logger.LogInformation("Publishing SIP message to MQTT topic {Topic}", _mqttConfiguration.TopicPublish);
-                _logger.LogDebug("MQTT Payload: {Payload}", jsonPayload);
-
-                await _mqttClient.PublishAsync(message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to publish SIP message to MQTT");
-            }
-
+            await _mqttClient.PublishAsync(message);
+            
+            // Log only after successful publish
+            _logger.LogInformation("Incoming call published: {CallerName} ({Number})", packet.CallerName, packet.Number);
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogDebug(
-                "SIP message from {SourceIp} to {DestinationIp} - Packet #{PacketCount}",
-                packet.SourceIp,
-                packet.DestinationIp,
-                packet.TotalPacketsReceived);
+            _logger.LogError(ex, "Failed to publish SIP message to MQTT");
         }
     }
 }
