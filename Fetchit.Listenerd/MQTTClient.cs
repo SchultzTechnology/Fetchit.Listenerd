@@ -145,6 +145,21 @@ public class MQTTClient
 
     public async Task PublishSipAsync(SipPacket packet)
     {
+        // Use the rich properties parsed by the class
+        var payload = new
+        {
+            _startTime = DateTime.UtcNow.ToString("o"),
+            _endTime = DateTime.UtcNow.ToString("o"),
+            Guid = Guid.NewGuid().ToString(),
+            ClientID = _connectionSecret?.ClientId ?? "UnknownClient",
+            Number = packet.Number,
+            CallerID = packet.CallerName,
+            Line = "Main",
+            PhoneSystem = "Fetchit Listenerd"
+        };
+
+        string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
+
         // If EvaluateIsIncomingInvite() returned false, we skip publishing entirely.
         if (!packet.IsInvite)
         {
@@ -163,21 +178,6 @@ public class MQTTClient
             return;
         }
 
-        // Use the rich properties parsed by the class
-        var payload = new
-        {
-            _startTime = DateTime.UtcNow.ToString("o"),
-            _endTime = DateTime.UtcNow.ToString("o"),
-            Guid = Guid.NewGuid().ToString(),
-            ClientID = _connectionSecret?.ClientId ?? "UnknownClient",
-            Number = packet.Number,
-            CallerID = packet.CallerName,
-            Line = "Main",
-            PhoneSystem = "Fetchit Listenerd"
-        };
-
-        string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
-
         try
         {
             var message = new MqttApplicationMessageBuilder()
@@ -188,7 +188,7 @@ public class MQTTClient
                 .Build();
 
             await _mqttClient.PublishAsync(message);
-            
+
             // Log only after successful publish
             _logger.LogInformation("Incoming call published: {CallerName} ({Number})", packet.CallerName, packet.Number);
         }
