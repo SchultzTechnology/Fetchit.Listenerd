@@ -20,7 +20,18 @@ fi
 if ! command -v git &> /dev/null; then
     echo "Installing git..."
     if command -v apt-get &> /dev/null; then
-        apt-get update
+        # Clean apt cache first if needed
+        apt-get clean 2>/dev/null || true
+        
+        # Try to update package lists
+        echo "Updating package lists..."
+        if ! apt-get update 2>&1; then
+            echo "⚠ Warning: apt-get update failed, attempting to clean and retry..."
+            rm -rf /var/lib/apt/lists/* 2>/dev/null || true
+            mkdir -p /var/lib/apt/lists/partial 2>/dev/null || true
+            apt-get update 2>&1 || echo "⚠ Warning: apt-get update still failing, will try to install git anyway..."
+        fi
+        
         apt-get install -y git
     elif command -v dnf &> /dev/null; then
         dnf install -y git

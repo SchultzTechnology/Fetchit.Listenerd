@@ -55,10 +55,48 @@ detect_os
 #--------------------------------------------
 echo "Installing system dependencies..."
 
+# Function to safely run apt-get update with retries
+safe_apt_update() {
+    local max_attempts=3
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        echo "Attempting apt-get update (attempt $attempt/$max_attempts)..."
+        
+        # Try to clean apt cache if this is a retry
+        if [ $attempt -gt 1 ]; then
+            echo "Cleaning apt cache..."
+            apt-get clean || true
+            rm -rf /var/lib/apt/lists/* || true
+            mkdir -p /var/lib/apt/lists/partial || true
+        fi
+        
+        # Run apt-get update
+        if apt-get update 2>&1; then
+            echo "✓ apt-get update succeeded"
+            return 0
+        else
+            echo "⚠ apt-get update failed (attempt $attempt/$max_attempts)"
+            attempt=$((attempt + 1))
+            if [ $attempt -le $max_attempts ]; then
+                sleep 2
+            fi
+        fi
+    done
+    
+    echo "❌ apt-get update failed after $max_attempts attempts"
+    return 1
+}
+
 case $OS in
     ubuntu|debian|raspbian)
         export DEBIAN_FRONTEND=noninteractive
-        apt-get update
+        
+        # Run apt-get update with retry logic
+        if ! safe_apt_update; then
+            echo "❌ Unable to update package lists. Please check your system and try again."
+            exit 1
+        fi
         
         # Determine correct libpcap package name
         LIBPCAP_PKG="libpcap0.8"
