@@ -17,8 +17,6 @@ namespace Fetchit.Listenerd
     {
         // Static fields for performance optimization
         private static readonly char[] LineBreakChars = new[] { '\r', '\n' };
-        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public string SourceIp { get; }
         public string DestinationIp { get; }
@@ -124,15 +122,6 @@ namespace Fetchit.Listenerd
             if (!isTargetingLocalIp)
             {
                 Console.WriteLine($"[DEBUG] Filtered: INVITE not targeting local IP. Target: '{firstLine}' vs Local: '{DestinationIp}'");
-                return false;
-            }
-
-            // 3. Source Identity: PBX vs Phone
-            bool hasServerHeader = ServerHeaderRegex.IsMatch(RawSipText);
-
-            if (!hasServerHeader)
-            {
-                Console.WriteLine("[DEBUG] Filtered: INVITE has no 'Server:' header (likely from a phone, not a PBX).");
                 return false;
             }
 
