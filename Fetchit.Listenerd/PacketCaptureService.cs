@@ -17,7 +17,7 @@ namespace Fetchit.Listenerd
     {
         // Static fields for performance optimization
         private static readonly char[] LineBreakChars = new[] { '\r', '\n' };
-        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:", 
+        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public string SourceIp { get; }
@@ -48,7 +48,7 @@ namespace Fetchit.Listenerd
             CSeqRaw = GetSipHeaderRaw(sipText, "CSeq");
             Number = GetSipNumber(sipText, "From");
             CallerName = GetSipDisplayName(sipText, "From");
-            
+
             // Determine if it is specifically an INCOMING call invite
             IsInvite = EvaluateIsIncomingInvite();
         }
@@ -106,22 +106,38 @@ namespace Fetchit.Listenerd
             bool isInviteRequest = RawSipText.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) &&
                                    CSeqRaw.Contains("INVITE", StringComparison.OrdinalIgnoreCase);
 
-            if (!isInviteRequest) return false;
+            if (!isInviteRequest)
+            {
+                // Only log if it's a common method like REGISTER to avoid spamming for every single packet
+                if (RawSipText.StartsWith("REGISTER") || RawSipText.StartsWith("OPTIONS"))
+                {
+                    Console.WriteLine($"[DEBUG] Filtered: Not an INVITE (Method: {RawSipText.Split(' ')[0]})");
+                }
+                return false;
+            }
 
             // 2. Direction Check: Is the Request-URI (the first line) targeting our Destination IP?
-            // Incoming: "INVITE sip:1186@10.0.0.11:5654 SIP/2.0" -> contains 10.0.0.11
-            // Outgoing: "INVITE sip:9047186662@PBX.service:5060 SIP/2.0" -> contains PBX address
             int firstLineEnd = RawSipText.IndexOfAny(LineBreakChars);
             string firstLine = firstLineEnd >= 0 ? RawSipText.Substring(0, firstLineEnd) : RawSipText;
             bool isTargetingLocalIp = firstLine.Contains(DestinationIp);
 
+            if (!isTargetingLocalIp)
+            {
+                Console.WriteLine($"[DEBUG] Filtered: INVITE not targeting local IP. Target: '{firstLine}' vs Local: '{DestinationIp}'");
+                return false;
+            }
+
             // 3. Source Identity: PBX vs Phone
-            // A PBX identifies itself with the "Server" header. 
-            // A phone (User-Agent) usually does not include a Server header in an INVITE.
-            // Use static compiled regex to ensure Server: is at the start of a header line (not embedded in another header's value)
             bool hasServerHeader = ServerHeaderRegex.IsMatch(RawSipText);
 
-            return isTargetingLocalIp && hasServerHeader;
+            if (!hasServerHeader)
+            {
+                Console.WriteLine("[DEBUG] Filtered: INVITE has no 'Server:' header (likely from a phone, not a PBX).");
+                return false;
+            }
+
+            Console.WriteLine($"[DEBUG] ACCEPTED: Incoming INVITE from {SourceIp} to {DestinationIp}");
+            return true;
         }
     }
 
