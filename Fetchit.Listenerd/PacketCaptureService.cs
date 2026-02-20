@@ -17,6 +17,8 @@ namespace Fetchit.Listenerd
     {
         // Static fields for performance optimization
         private static readonly char[] LineBreakChars = new[] { '\r', '\n' };
+        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public string SourceIp { get; }
         public string DestinationIp { get; }
@@ -100,13 +102,11 @@ namespace Fetchit.Listenerd
         {
             if (string.IsNullOrWhiteSpace(RawSipText)) return false;
 
-            // 1. Basic Check: Is this a SIP Request (not a response) and is the method INVITE?
             bool isInviteRequest = RawSipText.StartsWith("INVITE", StringComparison.OrdinalIgnoreCase) &&
                                    CSeqRaw.Contains("INVITE", StringComparison.OrdinalIgnoreCase);
 
             if (!isInviteRequest)
             {
-                // Only log if it's a common method like REGISTER to avoid spamming for every single packet
                 if (RawSipText.StartsWith("REGISTER") || RawSipText.StartsWith("OPTIONS"))
                 {
                     Console.WriteLine($"[DEBUG] Filtered: Not an INVITE (Method: {RawSipText.Split(' ')[0]})");
@@ -114,22 +114,30 @@ namespace Fetchit.Listenerd
                 return false;
             }
 
-            // 2. Direction Check: Is the Request-URI (the first line) targeting our Destination IP?
-            int firstLineEnd = RawSipText.IndexOfAny(LineBreakChars);
-            string firstLine = firstLineEnd >= 0 ? RawSipText.Substring(0, firstLineEnd) : RawSipText;
-            bool isTargetingLocalIp = firstLine.Contains(DestinationIp);
+            bool hasServerHeader = ServerHeaderRegex.IsMatch(RawSipText);
 
-            if (!isTargetingLocalIp)
+            bool isTargetingInternalNetwork = DestinationIp.StartsWith("10.") ||
+                                              DestinationIp.StartsWith("192.168.") ||
+                                              DestinationIp.StartsWith("172.");
+
+            if (hasServerHeader && isTargetingInternalNetwork)
             {
-                Console.WriteLine($"[DEBUG] Filtered: INVITE not targeting local IP. Target: '{firstLine}' vs Local: '{DestinationIp}'");
-                return false;
+                Console.WriteLine($"[SUCCESS] Valid Incoming Call: {SourceIp} -> {DestinationIp}");
+                return true;
             }
 
-            Console.WriteLine($"[DEBUG] ACCEPTED: Incoming INVITE from {SourceIp} to {DestinationIp}");
-            return true;
+            if (!hasServerHeader)
+            {
+                Console.WriteLine($"[DEBUG] Ignored: Outgoing call detected (No Server header) {SourceIp} -> {DestinationIp}");
+            }
+            else if (!isTargetingInternalNetwork)
+            {
+                Console.WriteLine($"[DEBUG] Ignored: Traffic not heading to internal phone: {DestinationIp}");
+            }
+
+            return false;
         }
     }
-
     public class PacketCaptureService
     {
         private ICaptureDevice? _device;
