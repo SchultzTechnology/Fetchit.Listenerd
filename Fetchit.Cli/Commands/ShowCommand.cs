@@ -24,6 +24,7 @@ namespace Fetchit.Cli.Commands
             try
             {
                 _context.Database.EnsureCreated();
+                _context.EnsureSchemaUpToDate();
 
                 var config = await _configService.GetLatestConfigurationAsync();
 

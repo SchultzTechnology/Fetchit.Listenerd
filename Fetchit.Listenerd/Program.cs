@@ -73,6 +73,7 @@ using (var scope = host.Services.CreateScope())
         try
         {
             dbContext.Database.EnsureCreated();
+            dbContext.EnsureSchemaUpToDate();
             logger.LogInformation("Database initialized successfully.");
             break;
         }

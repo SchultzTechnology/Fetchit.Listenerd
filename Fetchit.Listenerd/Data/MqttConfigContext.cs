@@ -25,4 +25,39 @@ public class MqttConfigContext : DbContext
             entity.Property(e => e.UpdatedAt).IsRequired();
         });
     }
+
+    // Adds columns that were introduced after the original schema was created via EnsureCreated().
+    // Idempotent: only issues ALTER TABLE when the column is actually missing.
+    public void EnsureSchemaUpToDate()
+    {
+        var conn = Database.GetDbConnection();
+        var opened = conn.State != System.Data.ConnectionState.Open;
+        if (opened) conn.Open();
+        try
+        {
+            AddColumnIfMissing(conn, "MqttConfigurations", "OtelAuthToken", "TEXT NULL");
+        }
+        finally
+        {
+            if (opened) conn.Close();
+        }
+    }
+
+    private static void AddColumnIfMissing(System.Data.Common.DbConnection conn, string table, string column, string columnDef)
+    {
+        using (var check = conn.CreateCommand())
+        {
+            check.CommandText = $"PRAGMA table_info({table});";
+            using var reader = check.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, System.StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+        }
+
+        using var alter = conn.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDef};";
+        alter.ExecuteNonQuery();
+    }
 }

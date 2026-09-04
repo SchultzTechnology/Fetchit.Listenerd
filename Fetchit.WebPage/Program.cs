@@ -45,6 +45,7 @@ using (var scope = app.Services.CreateScope())
         {
             // Ensure database exists and apply any pending migrations
             dbContext.Database.EnsureCreated();
+            dbContext.EnsureSchemaUpToDate();
 
             // Add default admin user only if no users exist
             if (!dbContext.Users.Any())

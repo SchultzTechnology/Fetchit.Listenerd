@@ -73,6 +73,7 @@ namespace Fetchit.Cli.Commands
             try
             {
                 _context.Database.EnsureCreated();
+                _context.EnsureSchemaUpToDate();
 
                 var existingConfig = await _configService.GetLatestConfigurationAsync();
 
