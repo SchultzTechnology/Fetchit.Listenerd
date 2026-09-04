@@ -6,8 +6,10 @@ WORKDIR /src
 # Copy csproj files and restore dependencies
 COPY ["Fetchit.Listenerd/Fetchit.Listenerd.csproj", "Fetchit.Listenerd/"]
 COPY ["Fetchit.WebPage/Fetchit.WebPage.csproj", "Fetchit.WebPage/"]
+COPY ["Fetchit.Cli/Fetchit.Cli.csproj", "Fetchit.Cli/"]
 RUN dotnet restore "Fetchit.Listenerd/Fetchit.Listenerd.csproj"
 RUN dotnet restore "Fetchit.WebPage/Fetchit.WebPage.csproj"
+RUN dotnet restore "Fetchit.Cli/Fetchit.Cli.csproj"
 
 # Copy everything else and build
 COPY . .
@@ -20,6 +22,10 @@ RUN dotnet build "Fetchit.Listenerd.csproj" -c Release -o /app/build/listenerd
 WORKDIR "/src/Fetchit.WebPage"
 RUN dotnet build "Fetchit.WebPage.csproj" -c Release -o /app/build/webpage
 
+# Build Cli
+WORKDIR "/src/Fetchit.Cli"
+RUN dotnet build "Fetchit.Cli.csproj" -c Release -o /app/build/cli
+
 # Publish stage
 FROM build AS publish
 WORKDIR "/src/Fetchit.Listenerd"
@@ -27,6 +33,9 @@ RUN dotnet publish "Fetchit.Listenerd.csproj" -c Release -o /app/publish/listene
 
 WORKDIR "/src/Fetchit.WebPage"
 RUN dotnet publish "Fetchit.WebPage.csproj" -c Release -o /app/publish/webpage /p:UseAppHost=false
+
+WORKDIR "/src/Fetchit.Cli"
+RUN dotnet publish "Fetchit.Cli.csproj" -c Release -o /app/publish/cli /p:UseAppHost=false
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
@@ -41,6 +50,7 @@ RUN apt-get update && apt-get install -y \
 # Copy published applications
 COPY --from=publish /app/publish/listenerd ./listenerd
 COPY --from=publish /app/publish/webpage ./webpage
+COPY --from=publish /app/publish/cli ./cli
 
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chmod 777 /app/data
