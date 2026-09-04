@@ -41,6 +41,7 @@ namespace Fetchit.Cli.Commands
                 Console.WriteLine($"  Broker Port  : {config.BrokerPort}");
                 Console.WriteLine($"  Topic Sub    : {config.TopicSubscribe}");
                 Console.WriteLine($"  Topic Pub    : {config.TopicPublish}");
+                Console.WriteLine($"  OTel Token   : {(string.IsNullOrEmpty(config.OtelAuthToken) ? "(not set)" : new string('*', config.OtelAuthToken.Length))}");
                 Console.WriteLine($"  Created At   : {config.CreatedAt:yyyy-MM-dd HH:mm:ss} UTC");
                 Console.WriteLine($"  Updated At   : {config.UpdatedAt:yyyy-MM-dd HH:mm:ss} UTC");
                 Console.WriteLine();

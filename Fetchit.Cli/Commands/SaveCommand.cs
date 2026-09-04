@@ -29,6 +29,7 @@ namespace Fetchit.Cli.Commands
             var portStr          = GetArg("--port");
             var topicSub         = GetArg("--topic-sub");
             var topicPub         = GetArg("--topic-pub");
+            var otelToken        = GetArg("--otel-token");
 
             bool hasError = false;
 
@@ -78,13 +79,13 @@ namespace Fetchit.Cli.Commands
                 if (existingConfig != null)
                 {
                     await _configService.UpdateConfigurationAsync(
-                        existingConfig.Id, connectionSecret!, port, topicSub!, topicPub!);
+                        existingConfig.Id, connectionSecret!, port, topicSub!, topicPub!, otelToken);
                     Console.WriteLine("MQTT configuration updated successfully.");
                 }
                 else
                 {
                     await _configService.SaveConfigurationAsync(
-                        connectionSecret!, port, topicSub!, topicPub!);
+                        connectionSecret!, port, topicSub!, topicPub!, otelToken);
                     Console.WriteLine("MQTT configuration saved successfully.");
                 }
             }
@@ -115,7 +116,8 @@ namespace Fetchit.Cli.Commands
             Console.WriteLine("      --connection-secret \"<base64-string>\" \\");
             Console.WriteLine("      --port <1-65535> \\");
             Console.WriteLine("      --topic-sub \"fetchit/commands/#\" \\");
-            Console.WriteLine("      --topic-pub \"fetchit/status/\"");
+            Console.WriteLine("      --topic-pub \"fetchit/status/\" \\");
+            Console.WriteLine("      [--otel-token \"<signoz-auth-token>\"]");
             Console.WriteLine();
             Console.WriteLine("  View saved configuration:");
             Console.WriteLine("    dotnet Fetchit.Cli.dll --show");
@@ -125,6 +127,7 @@ namespace Fetchit.Cli.Commands
             Console.WriteLine();
             Console.WriteLine("Optional:");
             Console.WriteLine("  --db \"<path-to-mqttconfig.db>\"");
+            Console.WriteLine("  --otel-token \"<signoz-auth-token>\"");
         }
 
         string? GetArg(string key)

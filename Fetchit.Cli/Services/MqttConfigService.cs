@@ -30,7 +30,8 @@ namespace Fetchit.Cli.Services
         }
 
         public async Task<MqttConfiguration> SaveConfigurationAsync(
-            string connectionSecret, int brokerPort, string topicSubscribe, string topicPublish)
+            string connectionSecret, int brokerPort, string topicSubscribe, string topicPublish,
+            string? otelAuthToken = null)
         {
             var config = new MqttConfiguration
             {
@@ -38,6 +39,7 @@ namespace Fetchit.Cli.Services
                 BrokerPort       = brokerPort,
                 TopicSubscribe   = topicSubscribe,
                 TopicPublish     = topicPublish,
+                OtelAuthToken    = otelAuthToken,
                 CreatedAt        = DateTime.UtcNow,
                 UpdatedAt        = DateTime.UtcNow
             };
@@ -48,7 +50,8 @@ namespace Fetchit.Cli.Services
         }
 
         public async Task<MqttConfiguration> UpdateConfigurationAsync(
-            int id, string connectionSecret, int brokerPort, string topicSubscribe, string topicPublish)
+            int id, string connectionSecret, int brokerPort, string topicSubscribe, string topicPublish,
+            string? otelAuthToken = null)
         {
             var config = await _context.MqttConfigurations.FindAsync(id);
             if (config == null)
@@ -58,6 +61,7 @@ namespace Fetchit.Cli.Services
             config.BrokerPort       = brokerPort;
             config.TopicSubscribe   = topicSubscribe;
             config.TopicPublish     = topicPublish;
+            config.OtelAuthToken    = otelAuthToken;
             config.UpdatedAt        = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
