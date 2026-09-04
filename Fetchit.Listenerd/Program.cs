@@ -4,9 +4,40 @@ using Fetchit.Listenerd.Service;
 using Fetchit.Listenerd.Data;
 using Microsoft.EntityFrameworkCore;
 using static MQTTClient;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Exporter;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// Configure OpenTelemetry Logging
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeScopes = true;
+    logging.IncludeFormattedMessage = true;
+
+    var resourceBuilder = ResourceBuilder.CreateDefault()
+        .AddService("fetchit-listenerd")
+        .AddTelemetrySdk();
+    
+    logging.SetResourceBuilder(resourceBuilder);
+
+    var otlpEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
+    var otlpToken = builder.Configuration["OpenTelemetry:AuthToken"];
+
+    if (!string.IsNullOrEmpty(otlpEndpoint))
+    {
+        logging.AddOtlpExporter(options =>
+        {
+            options.Endpoint = new Uri(otlpEndpoint);
+            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+            if (!string.IsNullOrEmpty(otlpToken))
+            {
+                options.Headers = $"Authorization=Bearer {otlpToken}";
+            }
+        });
+    }
+});
 // Configure settings
 builder.Services.Configure<PacketCaptureSettings>(
     builder.Configuration.GetSection("PacketCaptureSettings"));
