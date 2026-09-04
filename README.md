@@ -51,6 +51,8 @@ sudo listenerd \
   --otel-token "<signoz-auth-token>"    # optional
 ```
 
+> **`sudo` is required.** The SQLite database at `/app/data/mqttconfig.db` is created and owned by `root` (Supervisor runs `fetchit-listenerd` and `fetchit-webpage` as root), and the CLI also needs root to `supervisorctl restart fetchit-listenerd` after saving. Running without `sudo` will produce `SQLite Error 8: 'attempt to write a readonly database'`.
+
 `--broker-port` is the **MQTT broker's TCP port** (e.g. `443`, `1883`, `8883`) — not the SIP capture port. The SIP port is configured separately via `PacketCaptureSettings:SipPort` in `appsettings.json` (default `5060`).
 
 Other subcommands:
@@ -211,7 +213,7 @@ sudo supervisorctl restart fetchit-webpage
 sudo supervisorctl stop fetchit-listenerd fetchit-webpage
 ```
 
-### Configuration CLI (`listenerd`)
+All `listenerd` subcommands must be run as `root` (`sudo`) because the SQLite database at `/app/data/mqttconfig.db` is owned by root — it's created by the Supervisor-managed services, which run as root. Non-root invocations fail with `SQLite Error 8: 'attempt to write a readonly database'`.
 
 ```bash
 # Save / update MQTT configuration (auto-restarts fetchit-listenerd)
@@ -228,6 +230,8 @@ sudo listenerd --show
 # Delete the saved configuration
 sudo listenerd --delete
 ```
+
+Inside the Docker container the same command is available (the container runs as root by default, so no `sudo` is needed)
 
 Inside the Docker container the same command is available:
 

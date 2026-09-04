@@ -44,6 +44,7 @@ Write-Host "  - Listenerd Service: " -NoNewline -ForegroundColor White
 Write-Host "Running in background" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Configure from the terminal (inside the container):" -ForegroundColor White
+Write-Host "  (container runs as root, so no sudo needed here)" -ForegroundColor DarkGray
 Write-Host "  docker exec -it fetchit-combined listenerd ``" -ForegroundColor Cyan
 Write-Host "    --connection-secret `"<base64-string>`" ``" -ForegroundColor Cyan
 Write-Host "    --broker-port 443 ``" -ForegroundColor Cyan
