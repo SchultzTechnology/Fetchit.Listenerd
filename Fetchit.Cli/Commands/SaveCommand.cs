@@ -26,7 +26,7 @@ namespace Fetchit.Cli.Commands
         {
 
             var connectionSecret = GetArg("--connection-secret");
-            var portStr          = GetArg("--port");
+            var portStr          = GetArg("--broker-port") ?? GetArg("--port");
             var topicSub         = GetArg("--topic-sub");
             var topicPub         = GetArg("--topic-pub");
             var otelToken        = GetArg("--otel-token");
@@ -41,12 +41,12 @@ namespace Fetchit.Cli.Commands
 
             if (string.IsNullOrWhiteSpace(portStr))
             {
-                Console.WriteLine("Error: --port is required.");
+                Console.WriteLine("Error: --broker-port is required.");
                 hasError = true;
             }
             else if (!int.TryParse(portStr, out int parsedPort) || parsedPort < 1 || parsedPort > 65535)
             {
-                Console.WriteLine("Error: --port must be a number between 1 and 65535.");
+                Console.WriteLine("Error: --broker-port must be a number between 1 and 65535.");
                 hasError = true;
             }
 
@@ -114,10 +114,13 @@ namespace Fetchit.Cli.Commands
             Console.WriteLine("  Save configuration:");
             Console.WriteLine("    listenerd \\");
             Console.WriteLine("      --connection-secret \"<base64-string>\" \\");
-            Console.WriteLine("      --port <1-65535> \\");
+            Console.WriteLine("      --broker-port <1-65535> \\");
             Console.WriteLine("      --topic-sub \"fetchit/commands/#\" \\");
             Console.WriteLine("      --topic-pub \"fetchit/status/\" \\");
             Console.WriteLine("      [--otel-token \"<signoz-auth-token>\"]");
+            Console.WriteLine();
+            Console.WriteLine("  Note: --broker-port is the MQTT broker TCP port (e.g. 443, 1883, 8883).");
+            Console.WriteLine("        The SIP capture port is configured separately in appsettings.json.");
             Console.WriteLine();
             Console.WriteLine("  View saved configuration:");
             Console.WriteLine("    listenerd --show");

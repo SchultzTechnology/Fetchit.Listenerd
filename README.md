@@ -45,11 +45,13 @@ Once installed, the `listenerd` command is available on `PATH`:
 ```bash
 sudo listenerd \
   --connection-secret "<base64-string>" \
-  --port 443 \
+  --broker-port 443 \
   --topic-sub "fetchit/commands/#" \
   --topic-pub "fetchit/status/" \
   --otel-token "<signoz-auth-token>"    # optional
 ```
+
+`--broker-port` is the **MQTT broker's TCP port** (e.g. `443`, `1883`, `8883`) — not the SIP capture port. The SIP port is configured separately via `PacketCaptureSettings:SipPort` in `appsettings.json` (default `5060`).
 
 Other subcommands:
 
@@ -215,7 +217,7 @@ sudo supervisorctl stop fetchit-listenerd fetchit-webpage
 # Save / update MQTT configuration (auto-restarts fetchit-listenerd)
 sudo listenerd \
   --connection-secret "<base64-string>" \
-  --port 443 \
+  --broker-port 443 \
   --topic-sub "fetchit/commands/#" \
   --topic-pub "fetchit/status/" \
   --otel-token "<signoz-auth-token>"   # optional

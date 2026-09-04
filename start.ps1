@@ -46,7 +46,7 @@ Write-Host ""
 Write-Host "Configure from the terminal (inside the container):" -ForegroundColor White
 Write-Host "  docker exec -it fetchit-combined listenerd ``" -ForegroundColor Cyan
 Write-Host "    --connection-secret `"<base64-string>`" ``" -ForegroundColor Cyan
-Write-Host "    --port 443 ``" -ForegroundColor Cyan
+Write-Host "    --broker-port 443 ``" -ForegroundColor Cyan
 Write-Host "    --topic-sub `"fetchit/commands/#`" ``" -ForegroundColor Cyan
 Write-Host "    --topic-pub `"fetchit/status/`" ``" -ForegroundColor Cyan
 Write-Host "    [--otel-token `"<signoz-auth-token>`"]" -ForegroundColor Cyan

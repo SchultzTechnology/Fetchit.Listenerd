@@ -111,7 +111,7 @@ jobs:
             - Fetchit.Listenerd: SIP packet capture worker service
             - Fetchit.WebPage: Configuration web interface (port 8080)
             - `listenerd` CLI: configure the service from the terminal
-              (`sudo listenerd --connection-secret ... --port ... --topic-sub ... --topic-pub ...`)
+              (`sudo listenerd --connection-secret ... --broker-port ... --topic-sub ... --topic-pub ...`)
             - Self-contained .NET runtime (no .NET SDK installation required)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
