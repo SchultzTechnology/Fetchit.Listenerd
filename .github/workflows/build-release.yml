@@ -23,6 +23,7 @@ jobs:
         run: |
           dotnet restore Fetchit.Listenerd/Fetchit.Listenerd.csproj
           dotnet restore Fetchit.WebPage/Fetchit.WebPage.csproj
+          dotnet restore Fetchit.Cli/Fetchit.Cli.csproj
       
       - name: Build Listenerd (ARM64)
         run: |
@@ -45,11 +46,22 @@ jobs:
             /p:PublishSingleFile=true \
             /p:DebugType=None \
             /p:DebugSymbols=false
-      
+
+      - name: Build Cli (ARM64)
+        run: |
+          dotnet publish Fetchit.Cli/Fetchit.Cli.csproj \
+            --configuration Release \
+            --runtime linux-arm64 \
+            --self-contained \
+            --output ./publish/cli \
+            /p:PublishSingleFile=true \
+            /p:DebugType=None \
+            /p:DebugSymbols=false
+
       - name: Create release package
         run: |
           cd publish
-          zip -r ../fetchit-linux-arm64.zip listenerd webpage
+          zip -r ../fetchit-linux-arm64.zip listenerd webpage cli
           cd ..
           ls -lh fetchit-linux-arm64.zip
       
@@ -98,6 +110,8 @@ jobs:
             ### What's Included
             - Fetchit.Listenerd: SIP packet capture worker service
             - Fetchit.WebPage: Configuration web interface (port 8080)
+            - `listenerd` CLI: configure the service from the terminal
+              (`sudo listenerd --connection-secret ... --port ... --topic-sub ... --topic-pub ...`)
             - Self-contained .NET runtime (no .NET SDK installation required)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

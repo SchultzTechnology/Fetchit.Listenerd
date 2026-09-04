@@ -189,6 +189,11 @@ unzip -q -o /tmp/fetchit-linux-arm64.zip -d ${PUBLISH_PATH}
 echo "Setting executable permissions..."
 chmod +x ${PUBLISH_PATH}/listenerd/Fetchit.Listenerd
 chmod +x ${PUBLISH_PATH}/webpage/Fetchit.WebPage
+if [ -f ${PUBLISH_PATH}/cli/listenerd ]; then
+    chmod +x ${PUBLISH_PATH}/cli/listenerd
+    ln -sf ${PUBLISH_PATH}/cli/listenerd /usr/local/bin/listenerd
+    echo "Installed 'listenerd' command to /usr/local/bin/listenerd"
+fi
 
 # Clean up
 rm -f /tmp/fetchit-linux-arm64.zip
@@ -270,6 +275,17 @@ echo "✅ Services started successfully!"
 echo ""
 echo "Web Application : http://localhost:8080"
 echo "Listener Service: Running in background"
+echo ""
+echo "Configure from the terminal with the 'listenerd' command:"
+echo "  sudo listenerd \\"
+echo "    --connection-secret \"<base64-string>\" \\"
+echo "    --port 443 \\"
+echo "    --topic-sub \"fetchit/commands/#\" \\"
+echo "    --topic-pub \"fetchit/status/\" \\"
+echo "    [--otel-token \"<signoz-auth-token>\"]"
+echo ""
+echo "  sudo listenerd --show      # view saved config"
+echo "  sudo listenerd --delete    # remove saved config"
 echo ""
 echo "Useful commands:"
 echo "  Check status : sudo supervisorctl status"

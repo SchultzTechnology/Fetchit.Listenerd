@@ -112,7 +112,7 @@ namespace Fetchit.Cli.Commands
             Console.WriteLine();
             Console.WriteLine("Commands:");
             Console.WriteLine("  Save configuration:");
-            Console.WriteLine("    dotnet Fetchit.Cli.dll \\");
+            Console.WriteLine("    listenerd \\");
             Console.WriteLine("      --connection-secret \"<base64-string>\" \\");
             Console.WriteLine("      --port <1-65535> \\");
             Console.WriteLine("      --topic-sub \"fetchit/commands/#\" \\");
@@ -120,10 +120,10 @@ namespace Fetchit.Cli.Commands
             Console.WriteLine("      [--otel-token \"<signoz-auth-token>\"]");
             Console.WriteLine();
             Console.WriteLine("  View saved configuration:");
-            Console.WriteLine("    dotnet Fetchit.Cli.dll --show");
+            Console.WriteLine("    listenerd --show");
             Console.WriteLine();
             Console.WriteLine("  Delete saved configuration:");
-            Console.WriteLine("    dotnet Fetchit.Cli.dll --delete");
+            Console.WriteLine("    listenerd --delete");
             Console.WriteLine();
             Console.WriteLine("Optional:");
             Console.WriteLine("  --db \"<path-to-mqttconfig.db>\"");

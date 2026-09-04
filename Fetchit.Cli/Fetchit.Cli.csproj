@@ -9,6 +9,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>listenerd</AssemblyName>
+    <RootNamespace>Fetchit.Cli</RootNamespace>
+    <UseAppHost>true</UseAppHost>
   </PropertyGroup>
 
 </Project>

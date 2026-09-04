@@ -35,7 +35,7 @@ WORKDIR "/src/Fetchit.WebPage"
 RUN dotnet publish "Fetchit.WebPage.csproj" -c Release -o /app/publish/webpage /p:UseAppHost=false
 
 WORKDIR "/src/Fetchit.Cli"
-RUN dotnet publish "Fetchit.Cli.csproj" -c Release -o /app/publish/cli /p:UseAppHost=false
+RUN dotnet publish "Fetchit.Cli.csproj" -c Release -o /app/publish/cli
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
@@ -51,6 +51,9 @@ RUN apt-get update && apt-get install -y \
 COPY --from=publish /app/publish/listenerd ./listenerd
 COPY --from=publish /app/publish/webpage ./webpage
 COPY --from=publish /app/publish/cli ./cli
+
+# Expose CLI as `listenerd` on PATH
+RUN chmod +x /app/cli/listenerd && ln -sf /app/cli/listenerd /usr/local/bin/listenerd
 
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chmod 777 /app/data

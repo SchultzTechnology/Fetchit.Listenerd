@@ -36,7 +36,32 @@ After deployment, access the web interface at `http://localhost:8080`
 
 ## Initial Setup
 
-After deployment, configure the MQTT connection:
+After deployment, configure the MQTT connection using **either** method below. Whichever you pick, the Listenerd service will automatically detect the configuration and start monitoring — the service waits for MQTT config before starting packet capture, so an empty log line saying "Waiting for MQTT configuration" is normal until it's set.
+
+### Option A: Configure from the terminal (`listenerd` command)
+
+Once installed, the `listenerd` command is available on `PATH`:
+
+```bash
+sudo listenerd \
+  --connection-secret "<base64-string>" \
+  --port 443 \
+  --topic-sub "fetchit/commands/#" \
+  --topic-pub "fetchit/status/" \
+  --otel-token "<signoz-auth-token>"    # optional
+```
+
+Other subcommands:
+
+```bash
+sudo listenerd --show      # print the saved configuration (secrets masked)
+sudo listenerd --delete    # remove the saved configuration
+sudo listenerd --db "<path>"   # override the database path (default: /app/data/mqttconfig.db)
+```
+
+Saving a configuration automatically restarts the `fetchit-listenerd` supervisor process so the new settings take effect immediately.
+
+### Option B: Configure via the web UI
 
 1. **Access Web Interface**: Navigate to `http://your-pi-ip:8080`
 2. **Login**: Use default credentials
@@ -47,9 +72,9 @@ After deployment, configure the MQTT connection:
    - Port
    - Credentials
    - Topics
-4. **Save Configuration**: The Listenerd service will automatically detect the configuration and start monitoring
+4. **Save Configuration**
 
-**Note**: The `fetchit-listenerd` service will wait for MQTT configuration before starting packet capture. This is normal behavior - check logs with `sudo tail -f /var/log/supervisor/listenerd.out.log` to see the "Waiting for MQTT configuration" message.
+Check logs at any time with `sudo tail -f /var/log/supervisor/listenerd.out.log`.
 
 ## System Requirements
 
@@ -127,6 +152,10 @@ sudo unzip fetchit-linux-arm64.zip -d /app/fetchit
 # 4. Set executable permissions
 sudo chmod +x /app/fetchit/listenerd/Fetchit.Listenerd
 sudo chmod +x /app/fetchit/webpage/Fetchit.WebPage
+sudo chmod +x /app/fetchit/cli/listenerd
+
+# 4a. Expose the CLI as the `listenerd` command
+sudo ln -sf /app/fetchit/cli/listenerd /usr/local/bin/listenerd
 
 # 5. Create data directory
 sudo mkdir -p /app/data
@@ -178,6 +207,30 @@ sudo supervisorctl restart fetchit-webpage
 
 # Stop services
 sudo supervisorctl stop fetchit-listenerd fetchit-webpage
+```
+
+### Configuration CLI (`listenerd`)
+
+```bash
+# Save / update MQTT configuration (auto-restarts fetchit-listenerd)
+sudo listenerd \
+  --connection-secret "<base64-string>" \
+  --port 443 \
+  --topic-sub "fetchit/commands/#" \
+  --topic-pub "fetchit/status/" \
+  --otel-token "<signoz-auth-token>"   # optional
+
+# View the saved configuration
+sudo listenerd --show
+
+# Delete the saved configuration
+sudo listenerd --delete
+```
+
+Inside the Docker container the same command is available:
+
+```bash
+docker exec -it fetchit-combined listenerd --show
 ```
 
 ## Database Location
