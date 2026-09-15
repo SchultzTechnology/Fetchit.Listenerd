@@ -55,6 +55,9 @@ cd ${INSTALL_DIR}
 chmod +x start.sh
 ./start.sh
 
+echo "Enabling and starting supervisor service..."
+systemctl enable --now supervisor
+
 # Clean up
 cd /
 rm -rf ${INSTALL_DIR}
