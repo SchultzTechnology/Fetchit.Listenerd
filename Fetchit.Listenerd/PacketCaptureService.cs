@@ -17,8 +17,6 @@ namespace Fetchit.Listenerd
     {
         // Static fields for performance optimization
         private static readonly char[] LineBreakChars = new[] { '\r', '\n' };
-        private static readonly Regex ServerHeaderRegex = new Regex(@"^Server\s*:",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public string SourceIp { get; }
         public string DestinationIp { get; }
@@ -114,26 +112,17 @@ namespace Fetchit.Listenerd
                 return false;
             }
 
-            bool hasServerHeader = ServerHeaderRegex.IsMatch(RawSipText);
-
             bool isTargetingInternalNetwork = DestinationIp.StartsWith("10.") ||
                                               DestinationIp.StartsWith("192.168.") ||
                                               DestinationIp.StartsWith("172.");
 
-            if (hasServerHeader && isTargetingInternalNetwork)
+            if (isTargetingInternalNetwork)
             {
                 Console.WriteLine($"[SUCCESS] Valid Incoming Call: {SourceIp} -> {DestinationIp}");
                 return true;
             }
 
-            if (!hasServerHeader)
-            {
-                Console.WriteLine($"[DEBUG] Ignored: Outgoing call detected (No Server header) {SourceIp} -> {DestinationIp}");
-            }
-            else if (!isTargetingInternalNetwork)
-            {
-                Console.WriteLine($"[DEBUG] Ignored: Traffic not heading to internal phone: {DestinationIp}");
-            }
+            Console.WriteLine($"[DEBUG] Ignored: Traffic not heading to internal phone: {DestinationIp}");
 
             return false;
         }
@@ -333,6 +322,12 @@ namespace Fetchit.Listenerd
             if (data[ipStart + 9] != 17)
                 return;
 
+            // Check fragment offset (bits 0-12 of bytes 6 & 7 of the IP header)
+            // If this is > 0, it's a subsequent fragment and does not start with a UDP header.
+            int fragOffset = ((data[ipStart + 6] & 0x1F) << 8) | data[ipStart + 7];
+            if (fragOffset != 0)
+                return;
+
             string srcIp =
                 $"{data[ipStart + 12]}.{data[ipStart + 13]}.{data[ipStart + 14]}.{data[ipStart + 15]}";
 
@@ -351,12 +346,15 @@ namespace Fetchit.Listenerd
                 return;
 
             int udpLen = (data[udpStart + 4] << 8) | data[udpStart + 5];
-            if (udpLen < 8 || length < udpStart + udpLen)
+            if (udpLen < 8)
                 return;
 
             // -------- SIP Payload --------
             int payloadStart = udpStart + 8;
-            int payloadLen = udpLen - 8;
+            
+            // If the packet is an IP fragment, the captured length might be smaller than the total UDP length.
+            // We read whatever payload is available in this frame.
+            int payloadLen = Math.Min(udpLen - 8, length - payloadStart);
 
             if (payloadLen <= 0)
                 return;
